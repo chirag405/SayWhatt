@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import BackgroundBeams from "@/components/ui/acernity/background-beams";
 import Spotlight from "@/components/ui/acernity/spotlight";
 import GamingIllustration from "@/components/ui/acernity/gaming-illustration";
+import AcernitySpotlight from "@/components/ui/acernity/spotlight";
 import {
   CardContainer,
   CardBody,
@@ -359,7 +360,7 @@ export default function LobbyScreen() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 p-4 overflow-hidden relative">
       <BackgroundBeams className="opacity-20" />
-      <Spotlight
+      <AcernitySpotlight
         className="-top-40 -left-20 md:left-60 md:-top-20"
         fill="blue"
       />
