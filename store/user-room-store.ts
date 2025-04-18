@@ -1,0 +1,823 @@
+import { create } from "zustand";
+import { createClient } from "@/utils/supabase/client";
+import {
+  createAndJoinRoom,
+  joinRoom,
+  getPlayerById,
+  deletePlayer,
+  updateRoomStatus,
+  getPlayersInRoom,
+  getRoomByCode,
+} from "@/actions/user";
+import { Player, Room, Round, Turn } from "@/types/types";
+import { fetchRoomById } from "@/actions/game";
+import { useGameStore } from "./game-store";
+
+interface UserRoomState {
+  currentUser: Player | null;
+  currentRoom: Room | null;
+  roomPlayers: Player[];
+  currentRound: Round | null;
+  lastRoomCheck: number; // Add timestamp to track last room check
+
+  currentTurn: Turn | null;
+  isRoundVotingPhase: boolean;
+  setCurrentTurn: (turn: Turn | null) => void;
+  setCurrentRoom: (room: Room | null) => void;
+  // Realtime subscriptions
+  subscribeToRoom: (roomId: string) => () => void;
+  subscribeToPlayers: (roomId: string) => () => void;
+  subscribeToRounds: (roomId: string) => () => void;
+
+  subscribeToDeciderHistory: (roundId: string) => () => void;
+
+  // Room methods
+  createAndJoinRoom: (params: {
+    nickname: string;
+    totalRounds: number;
+    timeLimit: number;
+  }) => Promise<{
+    success: boolean;
+    room?: Room;
+    player?: Player;
+    error?: string;
+  }>;
+
+  joinRoom: (params: { roomCode: string; nickname: string }) => Promise<{
+    success: boolean;
+    room?: Room;
+    player?: Player;
+    error?: string;
+  }>;
+
+  fetchRoomById: (
+    roomId: string
+  ) => Promise<{ success: boolean; room?: Room; error?: string }>;
+  fetchRoomByCode: (
+    roomCode: string
+  ) => Promise<{ success: boolean; room?: Room; error?: string }>;
+  updateRoomStatus: (params: {
+    roomId: string;
+    status: "waiting" | "in_progress" | "completed";
+  }) => Promise<{ success: boolean; room?: Room; error?: string }>;
+
+  // Player methods
+  fetchPlayerById: (
+    playerId: string
+  ) => Promise<{ success: boolean; player?: Player; error?: string }>;
+  fetchPlayersInRoom: (
+    roomId: string
+  ) => Promise<{ success: boolean; players?: Player[]; error?: string }>;
+  deletePlayer: (
+    playerId: string
+  ) => Promise<{ success: boolean; error?: string }>;
+
+  // Updated: New method to fetch turn data
+  fetchCurrentTurn: (
+    roundId: string
+  ) => Promise<{ success: boolean; turn?: Turn | null; error?: string }>;
+
+  setRoomPlayers: (players: Player[]) => void;
+
+  // Utility
+  resetState: () => void;
+
+  // New method to force refresh room status
+  refreshRoomStatus: (roomId: string) => Promise<void>;
+}
+
+export const useUserRoomStore = create<UserRoomState>((set, get) => ({
+  currentUser: null,
+  currentRoom: null,
+  roomPlayers: [],
+  currentRound: null,
+  lastRoomCheck: 0,
+  currentTurn: null,
+  isRoundVotingPhase: false,
+
+  // Realtime subscription for room changes
+  subscribeToRoom: (roomId) => {
+    console.log("Subscribing to room changes for:", roomId);
+    const supabase = createClient();
+
+    // Initial fetch of the room data
+    const fetchInitialRoomData = async () => {
+      try {
+        const { data: room, error } = await supabase
+          .from("rooms")
+          .select("*")
+          .eq("id", roomId)
+          .single();
+
+        if (error) {
+          console.error("Error fetching initial room data:", error);
+          return;
+        }
+
+        if (room) {
+          console.log(
+            "Initial room data loaded:",
+            room.id,
+            "status:",
+            room.game_status
+          );
+
+          // If room has current_turn number, fetch the actual turn data
+          if (room.current_turn) {
+            const roundId = get().currentRound?.id;
+            if (roundId) {
+              get()
+                .fetchCurrentTurn(roundId)
+                .then(({ turn }) => {
+                  // Force immediate update of room status with turn data
+                  set((state) => ({
+                    currentRoom: room,
+                    currentTurn: turn || null,
+                    isRoundVotingPhase: room.round_voting_phase || false,
+                    lastRoomCheck: Date.now(),
+                  }));
+
+                  // Sync with gameStore if we're in a game
+                  if (room.game_status === "in_progress") {
+                    const gameStore = useGameStore.getState();
+                    if (gameStore.currentGame) {
+                      gameStore.syncWithUserRoomStore(roomId);
+                    }
+                  }
+                });
+            } else {
+              // No round id available, just update room
+              set((state) => ({
+                currentRoom: room,
+                isRoundVotingPhase: room.round_voting_phase || false,
+                lastRoomCheck: Date.now(),
+              }));
+
+              // Still sync with gameStore
+              if (room.game_status === "in_progress") {
+                const gameStore = useGameStore.getState();
+                if (gameStore.currentGame) {
+                  gameStore.syncWithUserRoomStore(roomId);
+                }
+              }
+            }
+          } else {
+            // No current turn, just update room
+            set((state) => ({
+              currentRoom: room,
+              isRoundVotingPhase: room.round_voting_phase || false,
+              lastRoomCheck: Date.now(),
+            }));
+
+            // Still sync with gameStore
+            if (room.game_status === "in_progress") {
+              const gameStore = useGameStore.getState();
+              if (gameStore.currentGame) {
+                gameStore.syncWithUserRoomStore(roomId);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Exception in fetchInitialRoomData:", err);
+      }
+    };
+
+    // Load initial data
+    fetchInitialRoomData();
+
+    // Set up realtime subscription with better logging
+    const channel = supabase.channel(`room:${roomId}`).on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "rooms",
+        filter: `id=eq.${roomId}`,
+      },
+      (payload) => {
+        console.log("Room change detected:", payload.eventType);
+        console.log("Room payload data:", payload);
+        const updatedRoom = payload.new as Room;
+
+        console.log("Room status updated to:", updatedRoom.game_status);
+
+        // If room has current_turn number and it changed, fetch the actual turn data
+        if (updatedRoom.current_turn !== get().currentRoom?.current_turn) {
+          const roundId = get().currentRound?.id;
+          if (roundId) {
+            get()
+              .fetchCurrentTurn(roundId)
+              .then(({ turn }) => {
+                set((state) => ({
+                  currentRoom: updatedRoom,
+                  currentTurn: turn || null,
+                  isRoundVotingPhase: updatedRoom.round_voting_phase || false,
+                  lastRoomCheck: Date.now(),
+                }));
+
+                // Sync with gameStore if we're in a game
+                if (updatedRoom.game_status === "in_progress") {
+                  const gameStore = useGameStore.getState();
+                  if (gameStore.currentGame) {
+                    gameStore.syncWithUserRoomStore(roomId);
+                  }
+                }
+              });
+          } else {
+            // No round id available, just update room
+            set((state) => ({
+              currentRoom: updatedRoom,
+              isRoundVotingPhase: updatedRoom.round_voting_phase || false,
+              lastRoomCheck: Date.now(),
+            }));
+
+            // Still sync with gameStore
+            if (updatedRoom.game_status === "in_progress") {
+              const gameStore = useGameStore.getState();
+              if (gameStore.currentGame) {
+                gameStore.syncWithUserRoomStore(roomId);
+              }
+            }
+          }
+        } else {
+          // Current turn hasn't changed, just update room
+          set((state) => ({
+            currentRoom: updatedRoom,
+            isRoundVotingPhase: updatedRoom.round_voting_phase || false,
+            lastRoomCheck: Date.now(),
+          }));
+
+          // Still sync with gameStore
+          if (updatedRoom.game_status === "in_progress") {
+            const gameStore = useGameStore.getState();
+            if (gameStore.currentGame) {
+              gameStore.syncWithUserRoomStore(roomId);
+            }
+          }
+        }
+      }
+    );
+
+    const subscription = channel.subscribe((status) => {
+      console.log(`Room subscription status for ${roomId}:`, status);
+    });
+
+    return () => {
+      console.log("Unsubscribing from room:", roomId);
+      supabase.removeChannel(channel);
+    };
+  },
+  setCurrentRoom: (room) => {
+    set({ currentRoom: room });
+  },
+
+  subscribeToDeciderHistory: (roundId) => {
+    const supabase = createClient();
+    console.log(`Subscribing to decider history for round: ${roundId}`);
+
+    const subscription = supabase
+      .channel(`decider_history:${roundId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "decider_history",
+          filter: `round_id=eq.${roundId}`,
+        },
+        (payload) => {
+          console.log("Decider history change:", payload);
+
+          // We don't need to update state here as the room and round
+          // subscriptions will handle the updates we care about
+        }
+      )
+      .subscribe((status, err) => {
+        if (err) console.error("Decider history subscription error:", err);
+        console.log("Decider history subscription status:", status);
+      });
+
+    return () => {
+      console.log(`Unsubscribing from decider history for round: ${roundId}`);
+      supabase.removeChannel(subscription);
+    };
+  },
+
+  // New method to force refresh room status
+  refreshRoomStatus: async (roomId) => {
+    try {
+      const supabase = createClient();
+      const { data: room, error } = await supabase
+        .from("rooms")
+        .select("*")
+        .eq("id", roomId)
+        .single();
+
+      if (error) {
+        console.error("Error refreshing room status:", error);
+        return;
+      }
+
+      if (room) {
+        // If room has current_turn number, fetch the actual turn data
+        if (
+          room.current_turn &&
+          room.current_turn !== get().currentRoom?.current_turn
+        ) {
+          const roundId = get().currentRound?.id;
+          if (roundId) {
+            const { turn } = await get().fetchCurrentTurn(roundId);
+
+            set((state) => {
+              // Deep comparison to prevent unnecessary state updates
+              if (
+                JSON.stringify(state.currentRoom) === JSON.stringify(room) &&
+                JSON.stringify(state.currentTurn) === JSON.stringify(turn)
+              ) {
+                console.log("Room and turn data unchanged, skipping refresh");
+                return state;
+              }
+
+              console.log("Room status refreshed:", room.game_status);
+              return {
+                ...state,
+                currentRoom: room,
+                currentTurn: turn || null,
+                isRoundVotingPhase: room.round_voting_phase || false,
+              };
+            });
+          } else {
+            // No round id available, just update room
+            set((state) => {
+              // Deep comparison to prevent unnecessary state updates
+              if (JSON.stringify(state.currentRoom) === JSON.stringify(room)) {
+                console.log("Room data unchanged, skipping refresh");
+                return state;
+              }
+
+              console.log("Room status refreshed:", room.game_status);
+              return {
+                ...state,
+                currentRoom: room,
+                isRoundVotingPhase: room.round_voting_phase || false,
+              };
+            });
+          }
+        } else {
+          // Current turn hasn't changed, just update room
+          set((state) => {
+            // Deep comparison to prevent unnecessary state updates
+            if (JSON.stringify(state.currentRoom) === JSON.stringify(room)) {
+              console.log("Room data unchanged, skipping refresh");
+              return state;
+            }
+
+            console.log("Room status refreshed:", room.game_status);
+            return {
+              ...state,
+              currentRoom: room,
+              isRoundVotingPhase: room.round_voting_phase || false,
+            };
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Exception in refreshRoomStatus:", err);
+    }
+  },
+
+  setRoomPlayers: (players) => {
+    set({ roomPlayers: players });
+  },
+
+  subscribeToPlayers: (roomId) => {
+    const supabase = createClient();
+    console.log(`Subscribing to players in room: ${roomId}`);
+
+    // Use a separate channel name for player subscriptions
+    const channelName = `players_channel:${roomId}`;
+
+    try {
+      const subscription = supabase
+        .channel(channelName)
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "players",
+            filter: `room_id=eq.${roomId}`,
+          },
+          (payload) => {
+            console.log("Player change payload:", payload);
+
+            set((state) => {
+              // Create a copy of the current players array
+              const newPlayers = [...state.roomPlayers];
+
+              if (payload.eventType === "INSERT") {
+                const newPlayer = payload.new as Player;
+                if (!newPlayers.some((p) => p.id === newPlayer.id)) {
+                  newPlayers.push(newPlayer);
+                }
+                return { roomPlayers: newPlayers };
+              } else if (payload.eventType === "DELETE") {
+                const deletedId = (payload.old as Player).id;
+                return {
+                  roomPlayers: newPlayers.filter((p) => p.id !== deletedId),
+                };
+              } else if (payload.eventType === "UPDATE") {
+                const updatedPlayer = payload.new as Player;
+                const index = newPlayers.findIndex(
+                  (p) => p.id === updatedPlayer.id
+                );
+
+                if (index > -1) {
+                  newPlayers[index] = updatedPlayer;
+                }
+
+                // Handle host change separately to ensure consistency
+                if (
+                  state.currentUser?.id === updatedPlayer.id &&
+                  updatedPlayer.is_host
+                ) {
+                  return {
+                    roomPlayers: newPlayers,
+                    currentUser: updatedPlayer,
+                    currentRoom: state.currentRoom
+                      ? { ...state.currentRoom, host_id: updatedPlayer.id }
+                      : null,
+                  };
+                }
+
+                return { roomPlayers: newPlayers };
+              }
+
+              return state; // Return unchanged state for unhandled events
+            });
+          }
+        )
+        .subscribe((status, err) => {
+          if (err) {
+            console.error("Player subscription error:", err);
+            // Consider implementing reconnection logic here
+          } else {
+            console.log("Player subscription status:", status);
+          }
+        });
+
+      // Create a separate broadcast channel with a distinct name
+      const broadcastChannelName = `player_broadcast:${roomId}`;
+      const broadcastChannel = supabase
+        .channel(broadcastChannelName)
+        .on("broadcast", { event: "PLAYER_DELETED" }, (payload) => {
+          console.log("Received manual delete event:", payload);
+          if (payload.payload && payload.payload.playerId) {
+            set((state) => ({
+              roomPlayers: state.roomPlayers.filter(
+                (p) => p.id !== payload.payload.playerId
+              ),
+            }));
+          }
+        })
+        .subscribe((status, err) => {
+          if (err) console.error("Broadcast subscription error:", err);
+        });
+
+      return () => {
+        console.log(`Unsubscribing from players in room: ${roomId}`);
+        try {
+          supabase.removeChannel(subscription);
+          supabase.removeChannel(broadcastChannel);
+        } catch (e) {
+          console.error("Error removing channels:", e);
+        }
+      };
+    } catch (error) {
+      console.error("Error setting up player subscription:", error);
+      return () => {}; // Return empty cleanup function in case of setup error
+    }
+  },
+  setCurrentTurn: (turn) => {
+    set({ currentTurn: turn });
+  },
+
+  // Updated to fetch and return the full Turn object
+  fetchCurrentTurn: async (roundId: string) => {
+    const supabase = createClient();
+    try {
+      const { data, error } = await supabase
+        .from("turns")
+        .select("*")
+        .eq("round_id", roundId)
+        .order("turn_number", { ascending: true })
+        .limit(1);
+
+      if (error) {
+        console.error("Error fetching current turn:", error);
+        return { success: false, error: error.message };
+      }
+
+      if (data && data.length > 0) {
+        const turn = data[0] as Turn;
+        set({ currentTurn: turn });
+        return { success: true, turn };
+      }
+
+      return { success: true, turn: null };
+    } catch (error) {
+      console.error("Exception in fetchCurrentTurn:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  },
+  subscribeToRounds: (roomId) => {
+    const supabase = createClient();
+    console.log(`Subscribing to rounds in room: ${roomId}`);
+
+    // Immediately fetch current round data
+    const fetchCurrentRoundData = async () => {
+      try {
+        const { data: room } = await supabase
+          .from("rooms")
+          .select("*")
+          .eq("id", roomId)
+          .single();
+
+        if (room) {
+          // Get the current round number
+          const currentRoundNumber = room.current_round;
+          if (currentRoundNumber) {
+            const { data: rounds } = await supabase
+              .from("rounds")
+              .select("*")
+              .eq("room_id", roomId)
+              .eq("round_number", currentRoundNumber)
+              .limit(1);
+
+            if (rounds && rounds.length > 0) {
+              const currentRound = rounds[0] as Round;
+              set({ currentRound });
+
+              // Now fetch the current turn
+              if (room.current_turn) {
+                const { data: turns } = await supabase
+                  .from("turns")
+                  .select("*")
+                  .eq("round_id", currentRound.id)
+                  .eq("turn_number", room.current_turn)
+                  .limit(1);
+
+                if (turns && turns.length > 0) {
+                  const currentTurn = turns[0] as Turn;
+                  set({ currentTurn });
+                }
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching current round data:", error);
+      }
+    };
+
+    // Execute immediate fetch
+    fetchCurrentRoundData();
+
+    // Set up round subscription (existing code)
+    const roundSubscription = supabase
+      .channel(`rounds:${roomId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "rounds",
+          filter: `room_id=eq.${roomId}`,
+        },
+        (payload) => {
+          console.log("Round change detected:", payload.eventType);
+          console.log("Round payload data:", payload);
+
+          switch (payload.eventType) {
+            case "INSERT":
+              set({ currentRound: payload.new as Round });
+              break;
+            case "UPDATE":
+              const updatedRound = payload.new as Round;
+              set({ currentRound: updatedRound });
+
+              // If the round current_turn changed, fetch the new turn data
+              if (
+                updatedRound.current_turn !== get().currentRound?.current_turn
+              ) {
+                get().fetchCurrentTurn(updatedRound.id);
+              }
+              break;
+          }
+        }
+      )
+      .subscribe((status, error) => {
+        if (error) {
+          console.error("Error subscribing to rounds:", error);
+        } else {
+          console.log("Subscribed to rounds successfully:", status);
+        }
+      });
+
+    // Fix for the turns subscription - using separate queries instead of IN clause
+    const turnSubscription = supabase
+      .channel(`turns:${roomId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "turns",
+        },
+        async (payload) => {
+          console.log("Turn change detected:", payload.eventType);
+          console.log("Turn payload data:", payload);
+
+          // Verify this turn belongs to a round in our room before processing
+          const turnData = payload.new as Turn;
+          if (!turnData || !turnData.round_id) return;
+
+          try {
+            // Check if this turn belongs to our room
+            const { data: round } = await supabase
+              .from("rounds")
+              .select("room_id")
+              .eq("id", turnData.round_id)
+              .single();
+
+            if (round && round.room_id === roomId) {
+              // This turn belongs to our room, proceed with updates
+              if (get().currentRound?.id) {
+                const roundId = get().currentRound
+                  ? get().currentRound!.id
+                  : null;
+
+                // Fetch the updated round data
+                const { data, error } = await supabase
+                  .from("rounds")
+                  .select("*")
+                  .eq("id", roundId)
+                  .single();
+
+                if (data && !error) {
+                  const round = data as Round;
+                  set({ currentRound: round });
+
+                  // If there's a turn update, also refresh the turn data
+                  if (
+                    payload.eventType === "UPDATE" ||
+                    payload.eventType === "INSERT"
+                  ) {
+                    set({ currentTurn: turnData });
+                  }
+                }
+              }
+            }
+          } catch (error) {
+            console.error("Error processing turn update:", error);
+          }
+        }
+      )
+      .subscribe((status, error) => {
+        if (error) {
+          console.error("Error subscribing to turns:", error);
+        } else {
+          console.log("Subscribed to turns successfully:", status);
+        }
+      });
+
+    return () => {
+      console.log(`Unsubscribing from rounds and turns in room: ${roomId}`);
+      supabase.removeChannel(roundSubscription);
+      supabase.removeChannel(turnSubscription);
+    };
+  },
+
+  // Room methods
+  createAndJoinRoom: async ({ nickname, totalRounds, timeLimit }) => {
+    const result = await createAndJoinRoom({
+      nickname,
+      totalRounds,
+      timeLimit,
+    });
+
+    if (result.success) {
+      set({
+        currentRoom: result.room || null,
+        currentUser: result.player || null,
+        roomPlayers: result.player ? [result.player] : [],
+      });
+    }
+
+    return {
+      success: result.success,
+      room: result.room,
+      player: result.player,
+      error: result.error,
+    };
+  },
+
+  joinRoom: async ({ roomCode, nickname }) => {
+    const result = await joinRoom({ roomCode, nickname });
+
+    if (result.success) {
+      set({
+        currentRoom: result.room || null,
+        currentUser: result.player || null,
+      });
+      if (result.room) await get().fetchPlayersInRoom(result.room.id);
+    }
+
+    try {
+      return {
+        success: result.success,
+        room: result.room,
+        player: result.player,
+        error: result.error,
+      };
+    } catch (error) {
+      console.error("Error in joinRoom:", error);
+      return {
+        success: false,
+        error: "An unexpected error occurred while joining the room.",
+      };
+    }
+  },
+
+  fetchRoomById: async (roomId) => {
+    try {
+      const result = await fetchRoomById(roomId);
+      if (result.success) set({ currentRoom: result.room || null });
+      return result;
+    } catch (error) {
+      console.error("Error in fetchRoomById:", error);
+      return {
+        success: false,
+        error: "An unexpected error occurred while fetching the room by ID.",
+      };
+    }
+  },
+
+  fetchRoomByCode: async (roomCode) => {
+    const result = await getRoomByCode(roomCode);
+    if (result.success) set({ currentRoom: result.room || null });
+    return result;
+  },
+
+  updateRoomStatus: async ({ roomId, status }) => {
+    const result = await updateRoomStatus({ roomId, status });
+    if (result.success) {
+      set((state) => ({
+        currentRoom: state.currentRoom
+          ? { ...state.currentRoom, game_status: status }
+          : null,
+      }));
+    }
+    return result;
+  },
+
+  fetchPlayerById: async (playerId) => {
+    return await getPlayerById(playerId);
+  },
+
+  fetchPlayersInRoom: async (roomId) => {
+    const result = await getPlayersInRoom(roomId);
+    if (result.success) set({ roomPlayers: result.players || [] });
+    return result;
+  },
+
+  deletePlayer: async (playerId) => {
+    const result = await deletePlayer(playerId);
+    if (result.success) {
+      console.log("player deleted", playerId);
+      set((state) => ({
+        roomPlayers: state.roomPlayers.filter((p) => p.id !== playerId),
+      }));
+      console.log("room players after delete", get().roomPlayers);
+    }
+    return result;
+  },
+
+  resetState: () => {
+    set({
+      currentUser: null,
+      currentRoom: null,
+      roomPlayers: [],
+      currentRound: null,
+      lastRoomCheck: 0,
+      currentTurn: null,
+      isRoundVotingPhase: false,
+    });
+  },
+}));
+
+export type { UserRoomState };

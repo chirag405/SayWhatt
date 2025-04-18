@@ -67,3 +67,61 @@
     @apply bg-background text-foreground;
   }
 }
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-bounce {
+  animation: bounce 1s ease-in-out;
+}
+
+.animate-pulse {
+  animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.scale-150 {
+  transform: scale(1.5);
+}
+/* For the meteor animations */
+@keyframes meteor {
+  0% {
+    transform: translateY(-100px) translateX(-100px);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(300px) translateX(300px);
+    opacity: 0;
+  }
+}
+
+.animate-meteor {
+  animation: meteor linear forwards;
+}
+
+/* For 3D card effect */
+.perspective {
+  perspective: 1000px;
+}
+
+.transform-style-3d {
+  transform-style: preserve-3d;
+}

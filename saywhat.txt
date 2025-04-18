@@ -1,0 +1,242 @@
+use-user.ts
+import { useEffect } from "react";
+import { useUserStore } from "@/store/user-store";
+
+export function useUser(userId?: string) {
+  const {
+    user,
+    isLoading,
+    error,
+    fetchUser,
+    createNewUser,
+    updateUserDetails,
+    logout,
+  } = useUserStore();
+
+  // Auto-fetch user if userId is provided
+  useEffect(() => {
+    if (userId && !user && !isLoading) {
+      fetchUser(userId);
+    }
+  }, [userId, user, isLoading, fetchUser]);
+
+  // Helper functions
+  const getUserDisplayName = () => {
+    return user?.username || "Anonymous";
+  };
+
+  const getUserAvatar = () => {
+    return (
+      user?.avatarUrl ||
+      `https://api.dicebear.com/7.x/fun-emoji/svg?seed=anonymous`
+    );
+  };
+
+  const isSessionValid = () => {
+    return !!user?.sessionId;
+  };
+
+  return {
+    user,
+    isLoading,
+    error,
+    fetchUser,
+    createNewUser,
+    updateUserDetails,
+    logout,
+    isAuthenticated: !!user,
+    isGuest: user?.isGuest ?? false,
+    getUserDisplayName,
+    getUserAvatar,
+    isSessionValid,
+  };
+}
+
+use-room.ts
+import { useEffect } from "react";
+import { useRoomStore } from "@/store/room-store";
+
+type RoomRole = "player" | "spectator";
+
+export function useRoom(roomCode?: string) {
+  const {
+    room,
+    participants,
+    isLoading,
+    error,
+    createNewRoom,
+    fetchRoomByCode,
+    joinExistingRoom,
+    fetchParticipants,
+    leaveRoom,
+    updateRoomStatus,
+    updateCurrentRound,
+    updateParticipantScore,
+  } = useRoomStore();
+
+  // Auto-fetch room if roomCode is provided
+  useEffect(() => {
+    if (roomCode && !room && !isLoading) {
+      fetchRoomByCode(roomCode);
+    }
+  }, [roomCode, room, isLoading, fetchRoomByCode]);
+
+  // Helper for creating a new game room
+  const createGame = async (
+    name: string,
+    leaderId: string,
+    roundCount: number,
+    answerTimeLimit: number,
+    username: string,
+    avatarUrl?: string
+  ) => {
+    return createNewRoom(
+      name,
+      leaderId,
+      roundCount,
+      answerTimeLimit,
+      username,
+      avatarUrl
+    );
+  };
+
+  // Helper for joining an existing game
+  const joinGame = async (
+    code: string,
+    userId: string,
+    username: string,
+    avatarUrl?: string,
+    role: RoomRole = "player"
+  ) => {
+    return joinExistingRoom(code, userId, username, avatarUrl, role);
+  };
+
+  // Get filtered participants
+  const getPlayers = () => participants.filter((p) => p.role === "player");
+  const getSpectators = () =>
+    participants.filter((p) => p.role === "spectator");
+
+  // Get user role in current room
+  const getUserRole = (userId: string): RoomRole | null => {
+    const participant = participants.find((p) => p.userId === userId);
+    return participant ? (participant.role as RoomRole) : null;
+  };
+
+  // Check if user is room leader
+  const isLeader = (userId: string) => {
+    return room?.leaderId === userId;
+  };
+
+  // Check if user is in room
+  const isUserInRoom = (userId: string) => {
+    return participants.some((p) => p.userId === userId);
+  };
+
+  // Get user by ID
+  const getUser = (userId: string) => {
+    return participants.find((p) => p.userId === userId);
+  };
+
+  // Get leader info
+  const getLeader = () => {
+    if (!room) return null;
+    return {
+      id: room.leaderId,
+      username: room.leaderName,
+      avatarUrl: room.leaderAvatar,
+    };
+  };
+
+  // Get room status
+  const getRoomStatus = () => room?.status || null;
+
+  return {
+    // State
+    room,
+    participants,
+    isLoading,
+    error,
+
+    // Actions
+    createGame,
+    joinGame,
+    leaveRoom,
+    fetchParticipants,
+
+    // Real-time updates
+    updateRoomStatus,
+    updateCurrentRound,
+    updateParticipantScore,
+
+    // Helpers
+    getPlayers,
+    getSpectators,
+    getUserRole,
+    isLeader,
+    isUserInRoom,
+    getUser,
+    getLeader,
+    getRoomStatus,
+
+    // Status indicators
+    isInRoom: !!room,
+    isLobby: room?.status === "lobby",
+    isPlaying: room?.status === "playing",
+    isGameOver: room?.status === "completed",
+  };
+}
+
+use-game.ts
+import { useEffect } from "react";
+import { useUserStore } from "@/store/user-store";
+
+export function useUser(userId?: string) {
+  const {
+    user,
+    isLoading,
+    error,
+    fetchUser,
+    createNewUser,
+    updateUserDetails,
+    logout,
+  } = useUserStore();
+
+  // Auto-fetch user if userId is provided
+  useEffect(() => {
+    if (userId && !user && !isLoading) {
+      fetchUser(userId);
+    }
+  }, [userId, user, isLoading, fetchUser]);
+
+  // Helper functions
+  const getUserDisplayName = () => {
+    return user?.username || "Anonymous";
+  };
+
+  const getUserAvatar = () => {
+    return (
+      user?.avatarUrl ||
+      `https://api.dicebear.com/7.x/fun-emoji/svg?seed=anonymous`
+    );
+  };
+
+  const isSessionValid = () => {
+    return !!user?.sessionId;
+  };
+
+  return {
+    user,
+    isLoading,
+    error,
+    fetchUser,
+    createNewUser,
+    updateUserDetails,
+    logout,
+    isAuthenticated: !!user,
+    isGuest: user?.isGuest ?? false,
+    getUserDisplayName,
+    getUserAvatar,
+    isSessionValid,
+  };
+}
+
