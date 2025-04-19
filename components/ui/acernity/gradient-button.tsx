@@ -8,28 +8,45 @@ interface GradientButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   children: React.ReactNode;
   className?: string;
-  gradientFrom?: string;
-  gradientTo?: string;
+  gradientFrom?: string; // legacy
+  gradientTo?: string; // legacy
+  fromColor?: string; // preferred
+  toColor?: string; // preferred
   hoverScale?: number;
+  variant?: "primary" | "secondary";
 }
 
 export const GradientButton = ({
   children,
   className,
-  gradientFrom = "from-purple-500",
-  gradientTo = "to-pink-500",
+  gradientFrom,
+  gradientTo,
+  fromColor,
+  toColor,
   hoverScale = 1.03,
+  variant = "primary",
   ...props
 }: GradientButtonProps) => {
+  // Prefer new props if available
+  const from = fromColor || gradientFrom || "from-purple-500";
+  const to = toColor || gradientTo || "to-pink-500";
+
+  // You can use `variant` for further styling logic if needed
+  const variantClass =
+    variant === "secondary"
+      ? "text-white" // adjust secondary variant style
+      : "text-white";
+
   return (
     <motion.button
       className={cn(
-        "relative px-6 py-3 rounded-lg font-medium text-white",
+        "relative px-6 py-3 rounded-lg font-medium",
         "bg-gradient-to-r",
-        gradientFrom,
-        gradientTo,
+        from,
+        to,
         "outline-none focus:ring-2 focus:ring-purple-500/50",
         "transition-all duration-300 ease-out",
+        variantClass,
         className
       )}
       whileHover={{ scale: hoverScale }}

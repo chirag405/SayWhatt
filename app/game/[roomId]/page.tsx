@@ -1,24 +1,28 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
+import { motion, AnimatePresence } from "framer-motion";
 
-import { TurnStatus, Player, Scenario, Turn } from "@/types/types";
-
-// Components
+// Types and Stores
+import { Scenario } from "@/types/types";
 import { useGameStore } from "@/store/game-store";
 import { useUserRoomStore } from "@/store/user-room-store";
+
+// Components
 import { VotingPhase } from "@/components/VotingPhase";
 import { CategorySelection } from "@/components/CategorySelection";
 import { ScenarioSelection } from "@/components/ScenarioSelection";
 import { AnswerSubmission } from "@/components/AnswerSubmission";
-import { getScenarioById } from "@/actions/game";
 import { useTabCloseHandler } from "@/utils/useTabCloseHandler";
 import { DisconnectionNotice } from "@/components/DisconnectionNotice";
 import { GameCompleted } from "@/components/GameCompleted";
-import { GameSidebar } from "@/components/GameSidebar";
-import { GameHeader } from "@/components/GameHeader";
 import { GameTimer } from "@/components/GameTimer";
+import { Sparkles } from "@/components/ui/acernity/Sparkles";
+import { AcernityCard } from "@/components/ui/acernity/card";
+import { GradientButton } from "@/components/ui/acernity/gradient-button";
+import AcernitySpotlight from "@/components/ui/acernity/spotlight";
+import { GlowingText } from "@/components/ui/acernity/glowing-text";
 
 export default function GameScreen() {
   const router = useRouter();
@@ -33,13 +37,10 @@ export default function GameScreen() {
     main: boolean;
     turn: boolean;
     round: boolean;
-  }>({
-    main: false,
-    turn: false,
-    round: false,
-  });
+  }>({ main: false, turn: false, round: false });
+  const [animationComplete, setAnimationComplete] = useState(false);
 
-  // User and room store
+  // Store hooks
   const {
     currentUser,
     currentRoom,
@@ -75,480 +76,360 @@ export default function GameScreen() {
 
   useTabCloseHandler(currentUser?.id || null, currentRoom?.id || null);
 
-  // Fix missing currentRound/currentTurn data
+  // Data initialization and subscriptions
   useEffect(() => {
-    if (
-      currentGame &&
-      !currentRound &&
-      !currentTurn &&
-      currentGame.rounds?.length > 0
-    ) {
-      // Get the current round from currentGame
-      const gameRound = currentGame.rounds.find(
-        (r) => r.round_number === currentGame.room.current_round
-      );
-
-      if (gameRound) {
-        // Manually set current round in userRoomStore
-        const userRoomState = useUserRoomStore.getState();
-        userRoomState.currentRound = gameRound;
-
-        // Find current turn if available
-        if (currentGame.turns?.length > 0) {
-          const gameTurn = currentGame.turns.find(
-            (t) => t.turn_number === currentGame.room.current_turn
-          );
-
-          if (gameTurn) {
-            userRoomState.setCurrentTurn(gameTurn);
-          }
-        }
-      }
-    }
-  }, [currentGame, currentRound, currentTurn]);
-
-  // Initialize game and subscriptions - more robust approach
-  useEffect(() => {
-    if (!roomId) {
-      console.log("[GameScreen] No roomId, skipping initialization");
-      return;
-    }
+    if (!roomId) return;
 
     let mounted = true;
     const cleanupFunctions: (() => void)[] = [];
 
     const initGame = async () => {
       if (!mounted) return;
-
       setIsLoading(true);
-      console.log("[GameScreen] Starting game initialization");
 
       try {
-        // Fetch initial data
-        console.log("[GameScreen] Fetching room data...");
         const roomResult = await fetchRoomById(roomId);
-        if (!roomResult.success) {
+        if (!roomResult.success)
           throw new Error(roomResult.error || "Failed to fetch room");
-        }
-
         if (!mounted) return;
-        console.log("[GameScreen] Room data fetched successfully");
 
-        console.log("[GameScreen] Fetching players in room...");
         await fetchPlayersInRoom(roomId);
-
-        if (!mounted) return;
-        console.log("[GameScreen] Players fetched successfully");
-
-        // Set up subscriptions
-        console.log("[GameScreen] Setting up subscriptions...");
-        try {
-          const unsubscribeRoom = subscribeToRoom(roomId);
-          cleanupFunctions.push(unsubscribeRoom);
-
-          const unsubscribePlayers = subscribeToPlayers(roomId);
-          cleanupFunctions.push(unsubscribePlayers);
-
-          const unsubscribeGame = subscribeToGame(roomId);
-          cleanupFunctions.push(unsubscribeGame);
-
-          const unsubscribeRounds = subscribeToRounds(roomId);
-          cleanupFunctions.push(unsubscribeRounds);
-
-          if (mounted) {
-            setSubscriptionsActive((prev) => ({ ...prev, main: true }));
-          }
-        } catch (subError) {
-          console.error("[GameScreen] Subscription error:", subError);
-          throw new Error("Failed to set up game subscriptions");
-        }
-
-        console.log("[GameScreen] Subscriptions set up successfully");
-
-        if (mounted) {
-          setIsLoading(false);
-          console.log("[GameScreen] Game initialized successfully");
-        }
+        cleanupFunctions.push(
+          subscribeToRoom(roomId),
+          subscribeToPlayers(roomId),
+          subscribeToGame(roomId),
+          subscribeToRounds(roomId)
+        );
+        setSubscriptionsActive((prev) => ({ ...prev, main: true }));
+        setIsLoading(false);
+        setTimeout(() => mounted && setAnimationComplete(true), 1000);
       } catch (err) {
         console.error("[GameScreen] Error initializing game:", err);
-        if (mounted) {
-          setError("Failed to load game. Please try again.");
-          setIsLoading(false);
-        }
+        if (mounted) setError("Failed to load game. Please try again.");
+        setIsLoading(false);
       }
     };
 
     initGame();
-
     return () => {
       mounted = false;
-      console.log("[GameScreen] Cleaning up main subscriptions");
-      cleanupFunctions.forEach((cleanup) => {
-        try {
-          cleanup();
-        } catch (e) {
-          console.error("Error during cleanup:", e);
-        }
-      });
+      cleanupFunctions.forEach((cleanup) => cleanup());
     };
   }, [roomId]);
 
-  // Subscribe to turn-specific data when current turn changes - with better cleanup
+  // Turn and round subscriptions
   useEffect(() => {
-    console.log("[GameScreen] Current turn changed:", currentTurn);
-    if (!currentTurn) {
-      console.log("[GameScreen] No current turn, skipping turn subscriptions");
-      return;
-    }
-
-    let mounted = true;
-    const turnId = currentTurn.id; // Capture current value to avoid closure issues
-    const cleanupFunctions: (() => void)[] = [];
-
-    console.log("[GameScreen] Setting up turn subscriptions for turn:", turnId);
-
-    try {
-      const unsubscribeAnswers = subscribeToAnswers(turnId);
-      cleanupFunctions.push(unsubscribeAnswers);
-
-      const unsubscribeVotes = subscribeToVotes(turnId);
-      cleanupFunctions.push(unsubscribeVotes);
-
-      const unsubscribeScenarios = subscribeToScenarios(turnId);
-      cleanupFunctions.push(unsubscribeScenarios);
-
-      if (mounted) {
-        setSubscriptionsActive((prev) => ({ ...prev, turn: true }));
-      }
-    } catch (err) {
-      console.error("[GameScreen] Error setting up turn subscriptions:", err);
-    }
-
+    if (!currentTurn) return;
+    const cleanupFunctions: (() => void)[] = [
+      subscribeToAnswers(currentTurn.id),
+      subscribeToVotes(currentTurn.id),
+      subscribeToScenarios(currentTurn.id),
+    ];
+    setSubscriptionsActive((prev) => ({ ...prev, turn: true }));
     return () => {
-      mounted = false;
-      console.log(
-        "[GameScreen] Cleaning up turn subscriptions for turn:",
-        turnId
-      );
-      cleanupFunctions.forEach((cleanup) => {
-        try {
-          cleanup();
-        } catch (e) {
-          console.error("Error during turn subscription cleanup:", e);
-        }
-      });
+      cleanupFunctions.forEach((cleanup) => cleanup());
       setSubscriptionsActive((prev) => ({ ...prev, turn: false }));
     };
   }, [currentTurn?.id]);
 
-  // Subscribe to round-specific data when current round changes - with better cleanup
   useEffect(() => {
-    console.log("[GameScreen] Current round changed:", currentRound);
-    if (!currentRound) {
-      console.log(
-        "[GameScreen] No current round, skipping round subscriptions"
-      );
-      return;
-    }
-
-    let mounted = true;
-    const roundId = currentRound.id; // Capture current value
-    const cleanupFunctions: (() => void)[] = [];
-
-    console.log(
-      "[GameScreen] Setting up round subscriptions for round:",
-      roundId
-    );
-
-    try {
-      const unsubscribeTurns = subscribeToTurns(roundId);
-      cleanupFunctions.push(unsubscribeTurns);
-
-      const unsubscribeDeciderHistory = subscribeToDeciderHistory(roundId);
-      cleanupFunctions.push(unsubscribeDeciderHistory);
-
-      if (mounted) {
-        setSubscriptionsActive((prev) => ({ ...prev, round: true }));
-      }
-    } catch (err) {
-      console.error("[GameScreen] Error setting up round subscriptions:", err);
-    }
-
+    if (!currentRound) return;
+    const cleanupFunctions: (() => void)[] = [
+      subscribeToTurns(currentRound.id),
+      subscribeToDeciderHistory(currentRound.id),
+    ];
+    setSubscriptionsActive((prev) => ({ ...prev, round: true }));
     return () => {
-      mounted = false;
-      console.log(
-        "[GameScreen] Cleaning up round subscriptions for round:",
-        roundId
-      );
-      cleanupFunctions.forEach((cleanup) => {
-        try {
-          cleanup();
-        } catch (e) {
-          console.error("Error during round subscription cleanup:", e);
-        }
-      });
+      cleanupFunctions.forEach((cleanup) => cleanup());
       setSubscriptionsActive((prev) => ({ ...prev, round: false }));
     };
   }, [currentRound?.id]);
 
-  // Fetch scenario when the currentTurn's scenario_id changes - with error handling
+  // Scenario fetching
   useEffect(() => {
     let mounted = true;
-
     const fetchScenario = async () => {
       if (currentTurn?.scenario_id) {
-        console.log(
-          "[GameScreen] Fetching scenario for turn:",
-          currentTurn.scenario_id
-        );
         try {
           const scenario = await storeGetScenarioById(currentTurn.scenario_id);
-          if (mounted) {
-            console.log("[GameScreen] Scenario fetched:", scenario);
-            setCurrentScenario(scenario);
-          }
+          mounted && setCurrentScenario(scenario);
         } catch (error) {
-          console.error("[GameScreen] Failed to fetch scenario:", error);
-          if (mounted) {
-            // Don't set an error state here as it's not critical - just log it
-          }
+          console.error("[GameScreen] Scenario fetch error:", error);
         }
       } else {
-        console.log("[GameScreen] No scenario_id in current turn");
-        if (mounted) {
-          setCurrentScenario(null);
-        }
+        mounted && setCurrentScenario(null);
       }
     };
-
     fetchScenario();
-
     return () => {
       mounted = false;
     };
   }, [currentTurn?.scenario_id]);
 
-  // Redirect if not authenticated or game data missing
-  useEffect(() => {
-    console.log("[GameScreen] Checking auth state:", {
-      isLoading,
-      currentUser,
-      currentRoom,
-    });
-
-    if (!isLoading && (!currentUser || !currentRoom)) {
-      console.log(
-        "[GameScreen] User not authenticated or room not found, redirecting"
-      );
-      router.push("/");
-    }
-  }, [currentUser, currentRoom, isLoading, router]);
-
-  // Handle loading and error states
-  if (isLoading) {
-    console.log("[GameScreen] Rendering loading state");
-    return (
-      <div className="flex items-center justify-center h-screen">
-        Loading game...
-      </div>
-    );
-  }
-
-  if (error) {
-    console.log("[GameScreen] Rendering error state:", error);
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <p className="text-red-500 mb-4">{error}</p>
-          <button
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-            onClick={() => router.push("/")}
-          >
-            Return to Home
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!currentGame || !currentUser || !currentRoom) {
-    console.log("[GameScreen] Missing required data:", {
-      currentGame,
-      currentUser,
-      currentRoom,
-    });
-    return (
-      <div className="flex items-center justify-center h-screen">
-        Game data not available
-      </div>
-    );
-  }
-
-  // Handle disconnected state
-  if (disconnectedPlayers.includes(currentUser.id)) {
-    console.log(
-      "[GameScreen] Rendering disconnected notice for user:",
-      currentUser.id
-    );
-    return <DisconnectionNotice roomCode={currentRoom.room_code} />;
-  }
-
-  // Render the appropriate game phase based on current status
+  // Prop definitions
   const renderGamePhase = () => {
-    console.log("[GameScreen] Rendering game phase with state:", {
-      gameCompleted,
-      currentTurn,
-      currentRound,
-      isRoundVotingPhase,
-    });
-
-    if (gameCompleted) {
-      console.log("[GameScreen] Rendering GameCompleted component");
-      return <GameCompleted players={currentGame.players} />;
-    }
+    if (gameCompleted) return <GameCompleted players={currentGame.players} />;
 
     if (!currentTurn || !currentRound) {
-      console.log(
-        "[GameScreen] No current turn or round, showing waiting message"
-      );
-      console.log("Detailed state:", {
-        currentGame,
-        currentRound,
-        currentTurn,
-        roomPlayers,
-        isRoundVotingPhase,
-      });
-      return <div>Waiting for game to start...</div>;
-    }
-
-    // If we're in voting phase for the entire round
-    if (isRoundVotingPhase) {
-      console.log("[GameScreen] Rendering round voting phase");
       return (
-        <VotingPhase
-          turnId={currentTurn.id}
-          currentUserId={currentUser.id}
-          isDecider={isDecider}
-        />
+        <div className="flex flex-col items-center justify-center h-full">
+          <Sparkles>
+            <GlowingText className="text-2xl font-bold text-purple-600">
+              Waiting for game to start...
+            </GlowingText>
+          </Sparkles>
+          <motion.div
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <div className="w-16 h-16 border-4 border-t-purple-500 border-purple-300 rounded-full animate-spin" />
+          </motion.div>
+        </div>
       );
     }
 
-    console.log(
-      "[GameScreen] Current Turn Status:-----------------",
-      currentTurn.status
-    );
+    const commonProps = {
+      isDecider,
+      currentDecider: currentGame!.players.find(
+        (p) => p.id === currentTurn.decider_id
+      ),
+    };
+
+    const categorySelectionProps = {
+      roundId: currentRound.id,
+      turnId: currentTurn.id,
+      userId: currentUser?.id || "",
+      ...commonProps,
+    };
+
+    const scenarioSelectionProps = {
+      turnId: currentTurn.id,
+      userId: currentUser?.id || "",
+      category: currentTurn.category || "",
+      ...commonProps,
+    };
+
+    const answerSubmissionProps = {
+      turnId: currentTurn.id,
+      playerId: currentUser?.id || "",
+      scenario: currentScenario,
+      timeLimit: currentRoom?.time_limit || 30,
+      timerEnd: timerEnd,
+      ...commonProps,
+    };
+
+    const votingPhaseProps = {
+      turnId: currentTurn.id,
+      currentUserId: currentUser?.id || "",
+      ...commonProps,
+    };
+
     switch (currentTurn.status) {
       case "selecting_category":
-        console.log("[GameScreen] Rendering CategorySelection");
-        return (
-          <CategorySelection
-            roundId={currentRound.id}
-            turnId={currentTurn.id}
-            userId={currentUser.id}
-            isDecider={isDecider}
-            currentDecider={currentGame.players.find(
-              (p) => p.id === currentTurn.decider_id
-            )}
-          />
-        );
-
+        return <CategorySelection {...categorySelectionProps} />;
       case "selecting_scenario":
-        console.log("[GameScreen] Rendering ScenarioSelection");
-        return (
-          <ScenarioSelection
-            turnId={currentTurn.id}
-            userId={currentUser.id}
-            isDecider={isDecider}
-            category={currentTurn.category || ""}
-            currentDecider={currentGame.players.find(
-              (p) => p.id === currentTurn.decider_id
-            )}
-          />
-        );
-
+        return <ScenarioSelection {...scenarioSelectionProps} />;
       case "answering":
-        console.log("[GameScreen] Rendering AnswerSubmission");
-        return (
-          <AnswerSubmission
-            turnId={currentTurn.id}
-            playerId={currentUser.id}
-            scenario={currentScenario}
-            timeLimit={currentRoom.time_limit}
-            timerEnd={timerEnd}
-            isDecider={isDecider}
-            currentDecider={currentGame.players.find(
-              (p) => p.id === currentTurn.decider_id
-            )}
-          />
-        );
-
+        return <AnswerSubmission {...answerSubmissionProps} />;
       case "voting":
-        console.log("[GameScreen] Rendering VotingPhase");
-        return (
-          <VotingPhase
-            turnId={currentTurn.id}
-            currentUserId={currentUser.id}
-            isDecider={isDecider}
-          />
-        );
-
-      case "completed":
-        console.log("[GameScreen] Turn completed, waiting for next turn");
+        return <VotingPhase {...votingPhaseProps} />;
+      default:
         return (
           <div className="text-center">
-            Turn completed! Preparing next turn...
+            <GlowingText className="text-2xl font-bold mb-4">
+              {currentTurn.status === "completed"
+                ? "Turn Completed!"
+                : "Waiting..."}
+            </GlowingText>
           </div>
         );
-
-      default:
-        console.log(
-          "[GameScreen] Unknown turn status, showing waiting message"
-        );
-        return <div>Waiting for game to progress...</div>;
     }
   };
 
-  console.log("[GameScreen] Rendering main game UI");
-  return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Game sidebar */}
-      <GameSidebar
-        players={currentGame.players}
-        currentUserId={currentUser.id}
-        currentTurn={turnNumber}
-        roundNumber={roundNumber}
-        totalRounds={totalRounds}
-      />
-
-      {/* Main game area */}
-      <div className="flex flex-col flex-1 overflow-hidden">
-        {/* Game header with round info */}
-        <GameHeader
-          roundNumber={roundNumber}
-          totalRounds={totalRounds}
-          turnNumber={turnNumber || 0}
-          currentDecider={currentGame.players.find(
-            (p) => p.id === currentTurn?.decider_id
-          )}
-        />
-
-        {/* Timer display when needed */}
-        {timerEnd && currentTurn?.status === "answering" && (
-          <GameTimer endTime={timerEnd} timeLimit={currentRoom.time_limit} />
-        )}
-
-        {/* Subscription status indicator for debugging - can be removed in production */}
-        {process.env.NODE_ENV === "development" && (
-          <div className="bg-gray-200 text-xs p-1 text-center">
-            Subscriptions: Main: {subscriptionsActive.main ? "✓" : "✗"} | Turn:{" "}
-            {subscriptionsActive.turn ? "✓" : "✗"} | Round:{" "}
-            {subscriptionsActive.round ? "✓" : "✗"}
-          </div>
-        )}
-
-        {/* Main game content */}
-        <div className="flex-1 p-6 overflow-y-auto">{renderGamePhase()}</div>
+  if (isLoading)
+    return (
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+          <div className="w-24 h-24 border-4 border-t-purple-500 animate-spin mb-6" />
+          <Sparkles>
+            <h2 className="text-3xl font-bold text-white mb-2">
+              Loading game...
+            </h2>
+          </Sparkles>
+          <p className="text-purple-300 text-lg">Preparing your adventure</p>
+        </motion.div>
       </div>
-    </div>
+    );
+
+  if (error)
+    return (
+      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+        <AcernityCard className="p-8 max-w-md border-red-200/20">
+          <h2 className="text-2xl font-bold text-red-400 mb-4">Error</h2>
+          <p className="text-gray-300 mb-6">{error}</p>
+          <GradientButton onClick={() => router.push("/")} className="w-full">
+            Return to Home
+          </GradientButton>
+        </AcernityCard>
+      </div>
+    );
+
+  if (!currentGame || !currentUser || !currentRoom) return null;
+  if (disconnectedPlayers.includes(currentUser.id))
+    return <DisconnectionNotice roomCode={currentRoom.room_code} />;
+
+  return (
+    <AcernitySpotlight className="flex h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+      {/* Sidebar */}
+      <motion.div
+        initial={{ x: -300, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        className="w-80 bg-slate-800/80 backdrop-blur-md border-r border-purple-500/20 p-4 flex flex-col"
+      >
+        <div className="mb-8 text-center">
+          <Sparkles>
+            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-500">
+              Prompt Game
+            </h1>
+          </Sparkles>
+          <div className="mt-2 px-4 py-1 bg-purple-900/30 rounded-full inline-flex items-center space-x-1">
+            <span className="w-2 h-2 rounded-full bg-green-400" />
+            <span className="text-xs text-gray-300">
+              Room: {currentRoom.room_code}
+            </span>
+          </div>
+        </div>
+
+        <div className="mb-6">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm text-gray-400">Round Progress</span>
+            <span className="text-sm font-medium text-purple-300">
+              {roundNumber}/{totalRounds}
+            </span>
+          </div>
+          <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
+            <motion.div
+              className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
+              style={{ width: `${(roundNumber / totalRounds) * 100}%` }}
+              initial={{ width: 0 }}
+              animate={{ width: `${(roundNumber / totalRounds) * 100}%` }}
+              transition={{ duration: 0.8, ease: "easeOut" }}
+            />
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          <h3 className="text-sm uppercase tracking-wider text-gray-400 mb-3">
+            Players
+          </h3>
+          <div className="space-y-2">
+            {currentGame.players.map((player, index) => (
+              <motion.div
+                key={player.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 * index, duration: 0.3 }}
+                className={`flex items-center p-2 rounded-lg ${
+                  player.id === currentUser.id
+                    ? "bg-purple-500/20 border border-purple-500/30"
+                    : "hover:bg-slate-700/50"
+                }`}
+              >
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${
+                    player.id === currentTurn?.decider_id
+                      ? "bg-gradient-to-br from-amber-400 to-orange-500"
+                      : "bg-gradient-to-br from-purple-500/70 to-pink-500/70"
+                  }`}
+                >
+                  {player.nickname[0].toUpperCase()}
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`font-medium ${
+                        player.id === currentUser.id
+                          ? "text-purple-300"
+                          : "text-white"
+                      }`}
+                    >
+                      {player.nickname}
+                    </span>
+                    <span className="text-sm font-medium text-purple-300">
+                      {player.total_points || 0}
+                    </span>
+                  </div>
+                  {player.id === currentTurn?.decider_id && (
+                    <span className="text-xs text-amber-400">Decider</span>
+                  )}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Main Content */}
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <motion.div
+          initial={{ y: -50, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="bg-slate-800/90 backdrop-blur-md border-b border-purple-500/20 p-4"
+        >
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold text-white">
+                Round {roundNumber}/{totalRounds}
+              </h2>
+              <p className="text-gray-400">
+                Turn #{turnNumber} •{" "}
+                <span className="text-purple-300">
+                  Decider:{" "}
+                  {currentGame.players.find(
+                    (p) => p.id === currentTurn?.decider_id
+                  )?.nickname || "..."}
+                </span>
+              </p>
+            </div>
+
+            {timerEnd && currentTurn?.status === "answering" && (
+              <div className="bg-slate-700/70 px-4 py-2 rounded-lg flex items-center">
+                <svg
+                  className="w-5 h-5 text-amber-400 mr-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <GameTimer
+                  endTime={timerEnd}
+                  timeLimit={currentRoom.time_limit}
+                />
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        <div className="flex-1 p-6 overflow-y-auto">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={currentTurn?.id || "loading"}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="h-full"
+            >
+              {renderGamePhase()}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+    </AcernitySpotlight>
   );
 }
