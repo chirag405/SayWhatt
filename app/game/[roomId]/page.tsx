@@ -15,7 +15,7 @@ import { CategorySelection } from "@/components/CategorySelection";
 import { ScenarioSelection } from "@/components/ScenarioSelection";
 import { AnswerSubmission } from "@/components/AnswerSubmission";
 import { useTabCloseHandler } from "@/utils/useTabCloseHandler";
-import { DisconnectionNotice } from "@/components/DisconnectionNotice";
+// import { DisconnectionNotice } from "@/components/DisconnectionNotice";
 import { GameCompleted } from "@/components/GameCompleted";
 import { GameTimer } from "@/components/GameTimer";
 import { Sparkles } from "@/components/ui/acernity/Sparkles";
@@ -62,7 +62,7 @@ export default function GameScreen() {
     subscribeToAnswers,
     subscribeToVotes,
     subscribeToScenarios,
-    disconnectedPlayers,
+    // disconnectedPlayers,s
     timerEnd,
     getScenarioById: storeGetScenarioById,
   } = useGameStore();
@@ -275,8 +275,6 @@ export default function GameScreen() {
     );
 
   if (!currentGame || !currentUser || !currentRoom) return null;
-  if (disconnectedPlayers.includes(currentUser.id))
-    return <DisconnectionNotice roomCode={currentRoom.room_code} />;
 
   return (
     <AcernitySpotlight className="flex h-screen bg-gradient-to-br from-slate-900 to-slate-800">

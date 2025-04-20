@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Clock } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface GameTimerProps {
   endTime: Date;
@@ -39,26 +40,41 @@ export function GameTimer({ endTime, timeLimit }: GameTimerProps) {
 
   // Determine color based on time remaining
   const getColorClass = () => {
-    if (timeRemaining <= 10) return "text-red-600";
-    if (timeRemaining <= 30) return "text-orange-500";
-    return "text-blue-600";
+    if (timeRemaining <= 10) return "text-red-400";
+    if (timeRemaining <= 30) return "text-amber-400";
+    return "text-blue-400";
   };
 
   return (
-    <div className="bg-gray-50 px-4 py-2 border-b border-gray-200">
-      <div className="container mx-auto">
+    <div className="bg-slate-800/50 px-4 py-2 rounded-lg border border-purple-500/20">
+      <div className="flex flex-col">
         <div className="flex items-center">
-          <Clock className="w-5 h-5 mr-2 text-gray-500" />
-          <span className={`font-mono font-bold ${getColorClass()}`}>
+          <Clock className="w-5 h-5 mr-2 text-gray-400" />
+          <motion.span
+            className={`font-mono font-bold ${getColorClass()}`}
+            animate={{ scale: timeRemaining <= 10 ? [1, 1.1, 1] : 1 }}
+            transition={{
+              duration: 0.5,
+              repeat: timeRemaining <= 10 ? Infinity : 0,
+            }}
+          >
             {formattedTime}
-          </span>
+          </motion.span>
         </div>
 
-        <div className="w-full bg-gray-200 rounded-full h-2 mt-1">
-          <div
-            className={`h-2 rounded-full ${timeRemaining <= 10 ? "bg-red-600" : timeRemaining <= 30 ? "bg-orange-500" : "bg-blue-600"}`}
-            style={{ width: `${progress}%` }}
-          ></div>
+        <div className="w-full bg-slate-700 rounded-full h-2 mt-2 overflow-hidden">
+          <motion.div
+            className={`h-2 rounded-full ${
+              timeRemaining <= 10
+                ? "bg-gradient-to-r from-red-500 to-red-400"
+                : timeRemaining <= 30
+                  ? "bg-gradient-to-r from-amber-500 to-amber-400"
+                  : "bg-gradient-to-r from-blue-500 to-purple-500"
+            }`}
+            initial={{ width: `${progress}%` }}
+            animate={{ width: `${progress}%` }}
+            transition={{ duration: 0.5 }}
+          />
         </div>
       </div>
     </div>

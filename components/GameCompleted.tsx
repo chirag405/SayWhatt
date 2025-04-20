@@ -2,6 +2,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trophy, User, Share2, Home } from "lucide-react";
 import { Player } from "@/types/types";
+import { motion } from "framer-motion";
+import { Sparkles } from "@/components/ui/acernity/Sparkles";
+import { GlowingText } from "@/components/ui/acernity/glowing-text";
+import { AcernityCard } from "@/components/ui/acernity/card";
+import { GradientButton } from "@/components/ui/acernity/gradient-button";
 
 interface GameCompletedProps {
   players: Player[];
@@ -34,73 +39,121 @@ export function GameCompleted({ players }: GameCompletedProps) {
     router.push("/");
   };
 
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  };
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 },
+  };
+
   return (
-    <div className="max-w-2xl mx-auto py-8">
-      <div className="text-center mb-12">
-        <h1 className="text-3xl font-bold mb-2">Game Complete!</h1>
-        <p className="text-gray-600">Thanks for playing!</p>
-      </div>
+    <motion.div
+      className="max-w-2xl mx-auto py-8"
+      variants={container}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div variants={item} className="text-center mb-12">
+        <Sparkles>
+          <GlowingText className="text-4xl font-bold mb-2">
+            Game Complete!
+          </GlowingText>
+        </Sparkles>
+        <p className="text-purple-300 text-lg">Thanks for playing!</p>
+      </motion.div>
 
       {/* Winner section */}
-      <div className="bg-gradient-to-r from-yellow-50 to-amber-50 p-6 rounded-lg shadow-md border border-yellow-200 mb-8 text-center">
-        <div className="flex justify-center mb-4">
-          <div className="bg-yellow-400 rounded-full p-4">
-            <Trophy className="w-12 h-12 text-white" />
+      <motion.div variants={item}>
+        <AcernityCard className="p-6 mb-8 text-center border-yellow-400/30">
+          <div className="flex justify-center mb-4">
+            <motion.div
+              className="bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full p-4"
+              animate={{ scale: [1, 1.1, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <Trophy className="w-12 h-12 text-white" />
+            </motion.div>
           </div>
-        </div>
-        <h2 className="text-2xl font-bold mb-1">{winner.nickname} Wins!</h2>
-        <p className="text-amber-600 font-semibold text-lg">
-          {winner.total_points} points
-        </p>
-      </div>
+          <h2 className="text-2xl font-bold mb-1 text-white">
+            {winner.nickname} Wins!
+          </h2>
+          <p className="text-amber-400 font-semibold text-lg">
+            {winner.total_points} points
+          </p>
+        </AcernityCard>
+      </motion.div>
 
       {/* Players ranking */}
-      <div className="bg-white rounded-lg shadow-md mb-8">
-        <div className="p-4 border-b border-gray-100">
-          <h3 className="font-semibold text-lg">Final Rankings</h3>
-        </div>
-        <div className="divide-y divide-gray-100">
-          {sortedPlayers.map((player, index) => (
-            <div
-              key={player.id}
-              className={`flex items-center p-4 ${index === 0 ? "bg-yellow-50" : ""}`}
-            >
-              <div className="flex-shrink-0 w-8 text-center font-bold text-gray-500">
-                {index + 1}
-              </div>
-              <div className="flex-shrink-0 mr-3">
-                <div
-                  className={`w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center ${index === 0 ? "bg-yellow-400 text-white" : ""}`}
-                >
-                  <User className="w-5 h-5" />
+      <motion.div variants={item}>
+        <AcernityCard className="mb-8 border-purple-500/20">
+          <div className="p-4 border-b border-purple-500/10">
+            <h3 className="font-semibold text-lg text-white">Final Rankings</h3>
+          </div>
+          <div className="divide-y divide-purple-500/10">
+            {sortedPlayers.map((player, index) => (
+              <motion.div
+                key={player.id}
+                className={`flex items-center p-4 ${index === 0 ? "bg-gradient-to-r from-amber-500/10 to-yellow-400/10" : ""}`}
+                whileHover={{ backgroundColor: "rgba(139, 92, 246, 0.1)" }}
+                transition={{ duration: 0.2 }}
+              >
+                <div className="flex-shrink-0 w-8 text-center font-bold text-gray-400">
+                  {index + 1}
                 </div>
-              </div>
-              <div className="flex-1">
-                <p className="font-medium">{player.nickname}</p>
-              </div>
-              <div className="font-bold text-lg">{player.total_points}</div>
-            </div>
-          ))}
-        </div>
-      </div>
+                <div className="flex-shrink-0 mr-3">
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      index === 0
+                        ? "bg-gradient-to-br from-yellow-400 to-amber-500 text-white"
+                        : "bg-gradient-to-br from-purple-500/70 to-pink-500/70"
+                    }`}
+                  >
+                    <User className="w-5 h-5" />
+                  </div>
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-white">{player.nickname}</p>
+                </div>
+                <div className="font-bold text-lg text-purple-300">
+                  {player.total_points}
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </AcernityCard>
+      </motion.div>
 
       {/* Action buttons */}
-      <div className="flex flex-col space-y-3">
-        <button
+      <motion.div variants={item} className="flex flex-col space-y-3">
+        <GradientButton
           onClick={handleShareResults}
-          className="w-full py-3 flex items-center justify-center bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+          className="w-full py-3 flex items-center justify-center"
+          gradientFrom="from-blue-500"
+          gradientTo="to-indigo-600"
         >
           <Share2 className="w-5 h-5 mr-2" />
           {copied ? "Copied!" : "Share Results"}
-        </button>
-        <button
+        </GradientButton>
+
+        <GradientButton
           onClick={handleReturnHome}
-          className="w-full py-3 flex items-center justify-center bg-gray-200 text-gray-800 rounded-lg font-medium hover:bg-gray-300 transition-colors"
+          className="w-full py-3 flex items-center justify-center"
+          gradientFrom="from-gray-600"
+          gradientTo="to-gray-700"
+          variant="secondary"
         >
           <Home className="w-5 h-5 mr-2" />
           Return to Home
-        </button>
-      </div>
-    </div>
+        </GradientButton>
+      </motion.div>
+    </motion.div>
   );
 }

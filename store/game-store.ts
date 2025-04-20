@@ -27,7 +27,7 @@ interface GameStoreState {
   answers: Answer[];
   votes: Vote[];
   timerEnd: Date | null;
-  disconnectedPlayers: string[];
+  // disconnectedPlayers: string[];
 
   subscribeToGame: (roomId: string) => () => void;
   subscribeToAnswers: (turnId: string) => () => void;
@@ -61,7 +61,7 @@ interface GameStoreState {
   ) => Promise<{ success: boolean }>;
   nextTurn: (turnId: string) => Promise<{ gameEnded: boolean }>;
   processAfterVoting: (roomId: string) => Promise<boolean>;
-  handleDisconnection: (playerId: string, roomId: string) => Promise<void>;
+  // handleDisconnection: (playerId: string, roomId: string) => Promise<void>;
   fetchDeciderHistory: (roundId: string) => Promise<any[]>;
   startTimer: (duration: number) => void;
   clearTimer: () => void;
@@ -831,33 +831,76 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       throw error;
     }
   },
-  handleDisconnection: async (playerId, roomId) => {
-    set({ disconnectedPlayers: [...get().disconnectedPlayers, playerId] });
+  // handleDisconnection: async (playerId, roomId) => {
+  //   set({ disconnectedPlayers: [...get().disconnectedPlayers, playerId] });
 
-    const { currentGame, currentTurn } = get();
+  //   const { currentGame, currentTurn } = get();
 
-    // If disconnected player is current decider, we need to find a new one
-    if (currentTurn?.decider_id === playerId) {
-      // Find remaining active players
-      const remainingPlayers = currentGame?.players.filter(
-        (p) => !get().disconnectedPlayers.includes(p.id)
-      );
+  //   // If disconnected player is current decider, we need to find a new one
+  //   if (currentTurn?.decider_id === playerId) {
+  //     // Find remaining active players who haven't been decider this round
+  //     const supabase = createClient();
 
-      if (remainingPlayers?.length) {
-        // Choose new decider randomly
-        const newDeciderId =
-          remainingPlayers[Math.floor(Math.random() * remainingPlayers.length)]
-            .id;
+  //     // Get players who have already been decider in this round
+  //     const { data: deciderHistory } = await supabase
+  //       .from("decider_history")
+  //       .select("player_id")
+  //       .eq("round_id", currentTurn.round_id);
 
-        // Update turn with new decider
-        const supabase = createClient();
-        await supabase
-          .from("turns")
-          .update({
-            decider_id: newDeciderId,
-          })
-          .eq("id", currentTurn.id);
-      }
-    }
-  },
+  //     const alreadyDeciders = deciderHistory?.map((d) => d.player_id) || [];
+
+  //     // Find eligible players (active and not yet been decider)
+  //     const eligiblePlayers = currentGame?.players.filter(
+  //       (p) =>
+  //         !get().disconnectedPlayers.includes(p.id) &&
+  //         !alreadyDeciders.includes(p.id)
+  //     );
+
+  //     // If no eligible players, allow players who've been decider to go again
+  //     const remainingPlayers = eligiblePlayers?.length
+  //       ? eligiblePlayers
+  //       : currentGame?.players.filter(
+  //           (p) => !get().disconnectedPlayers.includes(p.id)
+  //         );
+
+  //     if (remainingPlayers?.length) {
+  //       // Choose new decider randomly
+  //       const newDeciderId =
+  //         remainingPlayers[Math.floor(Math.random() * remainingPlayers.length)]
+  //           .id;
+
+  //       // Reset turn status and update with new decider
+  //       await supabase
+  //         .from("turns")
+  //         .update({
+  //           decider_id: newDeciderId,
+  //           status: "selecting_category", // Reset turn status
+  //           category: null, // Clear category
+  //           scenario_id: null, // Clear scenario
+  //           context: null, // Clear context
+  //         })
+  //         .eq("id", currentTurn.id);
+
+  //       // Remove old decider from history if they were there
+  //       await supabase
+  //         .from("decider_history")
+  //         .delete()
+  //         .eq("round_id", currentTurn.round_id)
+  //         .eq("player_id", playerId);
+
+  //       // Add new decider to history
+  //       await supabase.from("decider_history").insert({
+  //         round_id: currentTurn.round_id,
+  //         player_id: newDeciderId,
+  //         turn_number: currentTurn.turn_number,
+  //       });
+
+  //       console.log(`Decider changed from ${playerId} to ${newDeciderId}`);
+  //     } else {
+  //       // No players left, game should probably end
+  //       console.error("No players left to be decider");
+  //       // Handle game end logic
+  //     }
+  //   }
+  // },
 }));

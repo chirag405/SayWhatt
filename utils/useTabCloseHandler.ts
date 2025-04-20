@@ -3,23 +3,16 @@ import { use, useEffect } from "react";
 import { deletePlayer } from "@/actions/user";
 import { useUserRoomStore } from "@/store/user-room-store";
 
+// Improved useTabCloseHandler
 export const useTabCloseHandler = (
   playerId: string | null,
   roomId: string | null
 ) => {
+  const { resetState } = useUserRoomStore();
+
   useEffect(() => {
     if (!playerId || !roomId) return;
 
-    const cleanup = async () => {
-      try {
-        const { success, error } = await deletePlayer(playerId);
-        console.log("Player deleted on tab close/reload");
-      } catch (error) {
-        console.error("Error deleting player:", error);
-      }
-    };
-
-    // Handle tab closing/reloading
     const handleBeforeUnload = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       // Use Beacon API for reliability
@@ -27,22 +20,21 @@ export const useTabCloseHandler = (
       navigator.sendBeacon("/api/delete-player", payload);
     };
 
-    // Handle in-app navigation
-    // const handleVisibilityChange = () => {
-    //   if (document.visibilityState === "hidden") {
-    //     const payload = JSON.stringify({ playerId });
-    //     navigator.sendBeacon("/api/delete-player", payload);
-    //   }
-    // };
+    // For handling network disconnections, you might want to add:
+    const handleOffline = () => {
+      const payload = JSON.stringify({ playerId });
+      navigator.sendBeacon("/api/delete-player", payload);
+      resetState();
+    };
 
     window.addEventListener("beforeunload", handleBeforeUnload);
-    window.addEventListener("pagehide", handleBeforeUnload);
-    // document.addEventListener("visibilitychange", handleVisibilityChange);
+    // window.addEventListener("pagehide", handleBeforeUnload);
+    window.addEventListener("offline", handleOffline);
 
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      window.removeEventListener("pagehide", handleBeforeUnload);
-      // document.removeEventListener("visibilitychange", handleVisibilityChange);
+      // window.removeEventListener("pagehide", handleBeforeUnload);
+      window.removeEventListener("offline", handleOffline);
     };
-  }, [playerId, roomId]);
+  }, [playerId, roomId, resetState]);
 };

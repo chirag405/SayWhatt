@@ -26,6 +26,7 @@ export function CategorySelection({
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [timeLeft, setTimeLeft] = useState(40); // 40 seconds timer
 
   // The current category from the database
   const currentCategory = currentTurn?.category;
@@ -68,6 +69,47 @@ export function CategorySelection({
     }
   };
 
+  // Select random category when timer expires
+  useEffect(() => {
+    // Only run timer if user is the decider and no category is selected yet
+    if (
+      !isDecider ||
+      currentCategory ||
+      !currentTurn ||
+      currentTurn.status !== "selecting_category"
+    ) {
+      return;
+    }
+
+    // Timer countdown
+    const timer = setInterval(() => {
+      setTimeLeft((prevTime) => {
+        if (prevTime <= 1) {
+          clearInterval(timer);
+          // Select random category when time expires
+          const randomIndex = Math.floor(Math.random() * categories.length);
+          const randomCategory = categories[randomIndex].name;
+          handleSelectCategory(randomCategory);
+          return 0;
+        }
+        return prevTime - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isDecider, currentCategory, currentTurn]);
+
+  // Reset timer when turn changes
+  useEffect(() => {
+    if (
+      isDecider &&
+      !currentCategory &&
+      currentTurn?.status === "selecting_category"
+    ) {
+      setTimeLeft(40);
+    }
+  }, [currentTurn?.id]);
+
   // Determine if we're past the category selection phase
   const isCategorySelected =
     currentCategory !== null && currentCategory !== undefined;
@@ -77,6 +119,13 @@ export function CategorySelection({
     currentStatus === "selecting_scenario" ||
     currentStatus === "answering" ||
     currentStatus === "voting";
+
+  // Format time as MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+  };
 
   // If we're already past category selection
   if (isCategorySelected && isInScenarioSelectionPhase) {
@@ -170,6 +219,26 @@ export function CategorySelection({
           </GlowingText>
         </Sparkles>
 
+        {/* Timer display - more prominent */}
+        {isDecider && (
+          <motion.div
+            className="mb-4"
+            animate={{
+              scale: timeLeft <= 10 ? [1, 1.1, 1] : 1,
+              color:
+                timeLeft <= 10 ? ["#ff6b6b", "#ff0000", "#ff6b6b"] : "#a78bfa",
+            }}
+            transition={{
+              duration: 0.8,
+              repeat: timeLeft <= 10 ? Infinity : 0,
+            }}
+          >
+            <span className="text-2xl font-bold bg-black/30 px-4 py-2 rounded-full">
+              Time remaining: {formatTime(timeLeft)}
+            </span>
+          </motion.div>
+        )}
+
         {!isDecider && (
           <motion.p
             initial={{ opacity: 0 }}
@@ -244,7 +313,8 @@ export function CategorySelection({
                         {category.name[0]}
                       </span>
                     </div>
-                    <h3 className="text-lg font-semibold text-white">
+                    {/* Improved category name display */}
+                    <h3 className="text-xl font-bold text-white bg-black/20 p-2 rounded-lg">
                       {category.name}
                     </h3>
                   </div>

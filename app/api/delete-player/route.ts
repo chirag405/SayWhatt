@@ -7,6 +7,10 @@ export async function POST(req: Request) {
     const result = await deletePlayer(playerId);
     return NextResponse.json(result);
   } catch (error) {
-    return { error: (error as any).message };
+    console.error("Error in player deletion API:", error);
+    return NextResponse.json(
+      { error: (error as any).message },
+      { status: 500 }
+    );
   }
 }

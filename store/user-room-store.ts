@@ -391,113 +391,96 @@ export const useUserRoomStore = create<UserRoomState>((set, get) => ({
     set({ roomPlayers: players });
   },
 
+  // Enhanced version of subscribeToPlayers in user-room-store.js
   subscribeToPlayers: (roomId) => {
     const supabase = createClient();
     console.log(`Subscribing to players in room: ${roomId}`);
 
-    // Use a separate channel name for player subscriptions
-    const channelName = `players_channel:${roomId}`;
+    // Set up initial fetch on subscription
+    const fetchAllPlayers = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("players")
+          .select("*")
+          .eq("room_id", roomId);
 
-    try {
-      const subscription = supabase
-        .channel(channelName)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "players",
-            filter: `room_id=eq.${roomId}`,
-          },
-          (payload) => {
-            console.log("Player change payload:", payload);
+        if (error) {
+          console.error("Error fetching players on subscription:", error);
+          return;
+        }
 
-            set((state) => {
-              // Create a copy of the current players array
-              const newPlayers = [...state.roomPlayers];
+        // Update the state with the latest players from the database
+        // This ensures we have the full, accurate list
+        set({ roomPlayers: data });
+        console.log("Initial players loaded:", data.length);
+      } catch (err) {
+        console.error("Exception in fetchAllPlayers:", err);
+      }
+    };
 
-              if (payload.eventType === "INSERT") {
-                const newPlayer = payload.new as Player;
-                if (!newPlayers.some((p) => p.id === newPlayer.id)) {
-                  newPlayers.push(newPlayer);
-                }
-                return { roomPlayers: newPlayers };
-              } else if (payload.eventType === "DELETE") {
-                const deletedId = (payload.old as Player).id;
-                return {
-                  roomPlayers: newPlayers.filter((p) => p.id !== deletedId),
-                };
-              } else if (payload.eventType === "UPDATE") {
-                const updatedPlayer = payload.new as Player;
-                const index = newPlayers.findIndex(
-                  (p) => p.id === updatedPlayer.id
-                );
+    // Load players immediately
+    fetchAllPlayers();
 
-                if (index > -1) {
-                  newPlayers[index] = updatedPlayer;
-                }
+    // Set up periodic refresh as a safety mechanism
+    const refreshInterval = setInterval(() => {
+      console.log("Performing safety refresh of player list");
+      fetchAllPlayers();
+    }, 15000); // Refresh every 15 seconds
 
-                // Handle host change separately to ensure consistency
-                if (
-                  state.currentUser?.id === updatedPlayer.id &&
-                  updatedPlayer.is_host
-                ) {
-                  return {
-                    roomPlayers: newPlayers,
-                    currentUser: updatedPlayer,
-                    currentRoom: state.currentRoom
-                      ? { ...state.currentRoom, host_id: updatedPlayer.id }
-                      : null,
-                  };
-                }
+    // Enhanced subscription with better handling of DELETE
+    const subscription = supabase
+      .channel(`players_channel:${roomId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "players",
+          filter: `room_id=eq.${roomId}`,
+        },
+        (payload) => {
+          console.log("Player change detected:", payload.eventType);
+          console.log("Player payload:", payload);
 
-                return { roomPlayers: newPlayers };
-              }
+          if (payload.eventType === "DELETE") {
+            const deletedPlayer = payload.old as Player;
+            console.log("Player deleted:", deletedPlayer.id);
 
-              return state; // Return unchanged state for unhandled events
-            });
-          }
-        )
-        .subscribe((status, err) => {
-          if (err) {
-            console.error("Player subscription error:", err);
-            // Consider implementing reconnection logic here
-          } else {
-            console.log("Player subscription status:", status);
-          }
-        });
-
-      // Create a separate broadcast channel with a distinct name
-      const broadcastChannelName = `player_broadcast:${roomId}`;
-      const broadcastChannel = supabase
-        .channel(broadcastChannelName)
-        .on("broadcast", { event: "PLAYER_DELETED" }, (payload) => {
-          console.log("Received manual delete event:", payload);
-          if (payload.payload && payload.payload.playerId) {
+            // Update local state to remove the player
             set((state) => ({
               roomPlayers: state.roomPlayers.filter(
-                (p) => p.id !== payload.payload.playerId
+                (p) => p.id !== deletedPlayer.id
               ),
             }));
+          } else if (payload.eventType === "INSERT") {
+            // Handle insert as before
+            const newPlayer = payload.new as Player;
+            set((state) => {
+              if (!state.roomPlayers.some((p) => p.id === newPlayer.id)) {
+                return { roomPlayers: [...state.roomPlayers, newPlayer] };
+              }
+              return state;
+            });
+          } else if (payload.eventType === "UPDATE") {
+            // Handle update as before
+            const updatedPlayer = payload.new as Player;
+            set((state) => {
+              const updatedPlayers = state.roomPlayers.map((p) =>
+                p.id === updatedPlayer.id ? updatedPlayer : p
+              );
+              return { roomPlayers: updatedPlayers };
+            });
           }
-        })
-        .subscribe((status, err) => {
-          if (err) console.error("Broadcast subscription error:", err);
-        });
-
-      return () => {
-        console.log(`Unsubscribing from players in room: ${roomId}`);
-        try {
-          supabase.removeChannel(subscription);
-          supabase.removeChannel(broadcastChannel);
-        } catch (e) {
-          console.error("Error removing channels:", e);
         }
-      };
-    } catch (error) {
-      console.error("Error setting up player subscription:", error);
-      return () => {}; // Return empty cleanup function in case of setup error
-    }
+      )
+      .subscribe();
+
+    // Return a cleanup function that removes all subscriptions and intervals
+    return () => {
+      console.log(`Unsubscribing from players in room: ${roomId}`);
+      supabase.removeChannel(subscription);
+      clearInterval(refreshInterval);
+    };
   },
   setCurrentTurn: (turn) => {
     set({ currentTurn: turn });
