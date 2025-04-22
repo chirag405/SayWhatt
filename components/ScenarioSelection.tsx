@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 import { Player, Scenario } from "@/types/types";
@@ -34,19 +34,12 @@ export function ScenarioSelection({
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(40);
-  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isDecider && !scenarios.length) {
       handleGenerateScenarios();
     }
   }, [isDecider]);
-
-  useEffect(() => {
-    if (contentRef.current && scenarios.length > 0) {
-      contentRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-    }
-  }, [scenarios]);
 
   useEffect(() => {
     if (!isDecider || currentScenario || !scenarios.length) return;
@@ -147,7 +140,7 @@ export function ScenarioSelection({
           >
             <div className="w-12 h-12 border-4 border-t-purple-500 border-purple-300/30 rounded-full animate-spin mb-4" />
             <p className="text-xl text-purple-100 font-medium">
-              Waiting for scenario selection...
+              Please wait while a scenario is being selected
             </p>
             <p className="text-sm text-purple-300 mt-2">Category: {category}</p>
           </motion.div>
@@ -157,46 +150,50 @@ export function ScenarioSelection({
   }
 
   return (
-    <AcernitySpotlight className="flex flex-col items-center h-full overflow-y-auto py-8">
-      <Sparkles>
-        <GlowingText className="text-4xl font-extrabold mb-4 text-white">
-          {isDecider ? "Select a Scenario" : `Selected Scenario (${category})`}
-        </GlowingText>
-      </Sparkles>
+    <AcernitySpotlight className="flex flex-col items-center justify-between h-full py-8">
+      <div className="w-full max-w-3xl px-4 flex flex-col items-center">
+        <Sparkles>
+          <GlowingText className="text-4xl font-extrabold mb-4 text-white">
+            {isDecider
+              ? "Select a Scenario"
+              : `Selected Scenario (${category})`}
+          </GlowingText>
+        </Sparkles>
 
-      {isDecider &&
-        scenarios.length > 0 &&
-        !isGenerating &&
-        !currentScenario && (
+        {isDecider &&
+          scenarios.length > 0 &&
+          !isGenerating &&
+          !currentScenario && (
+            <motion.div
+              className="mb-6"
+              animate={{
+                scale: timeLeft <= 10 ? [1, 1.1, 1] : 1,
+                color:
+                  timeLeft <= 10
+                    ? ["#ff6b6b", "#ff0000", "#ff6b6b"]
+                    : "#a78bfa",
+              }}
+              transition={{
+                duration: 0.8,
+                repeat: timeLeft <= 10 ? Infinity : 0,
+              }}
+            >
+              <span className="text-2xl font-bold bg-black/30 px-4 py-2 rounded-full text-white">
+                Time remaining: {formatTime(timeLeft)}
+              </span>
+            </motion.div>
+          )}
+
+        {error && (
           <motion.div
-            className="mb-6"
-            animate={{
-              scale: timeLeft <= 10 ? [1, 1.1, 1] : 1,
-              color:
-                timeLeft <= 10 ? ["#ff6b6b", "#ff0000", "#ff6b6b"] : "#a78bfa",
-            }}
-            transition={{
-              duration: 0.8,
-              repeat: timeLeft <= 10 ? Infinity : 0,
-            }}
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-red-300 font-medium mb-4 p-3 bg-red-900/40 border border-red-500/50 rounded-lg max-w-3xl w-full"
           >
-            <span className="text-2xl font-bold bg-black/30 px-4 py-2 rounded-full text-white">
-              Time remaining: {formatTime(timeLeft)}
-            </span>
+            {error}
           </motion.div>
         )}
 
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-red-300 font-medium mb-4 p-3 bg-red-900/40 border border-red-500/50 rounded-lg max-w-3xl w-full"
-        >
-          {error}
-        </motion.div>
-      )}
-
-      <div className="w-full max-w-3xl pb-16 px-4" ref={contentRef}>
         {isDecider ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -224,7 +221,7 @@ export function ScenarioSelection({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="flex flex-col gap-4 mb-6"
+                  className="mb-6"
                 >
                   {isGenerating ? (
                     <motion.div
@@ -243,41 +240,48 @@ export function ScenarioSelection({
                         Generating scenarios...
                       </span>
                     </motion.div>
-                  ) : (
-                    <>
+                  ) : scenarios.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-4 w-full">
                       {scenarios.map((scenario, index) => (
-                        <motion.button
-                          key={scenario.id}
+                        <motion.div
+                          key={`scenario-${index}`}
                           initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.1, duration: 0.3 }}
-                          onClick={() => handleSelectScenario(scenario)}
-                          disabled={isLoading}
-                          className="p-4 bg-slate-800/70 border border-purple-500/30 rounded-lg hover:bg-purple-900/30 hover:border-purple-400/50 text-left transition-all duration-200 disabled:opacity-50 group"
+                          animate={{
+                            opacity: 1,
+                            y: 0,
+                            transition: { delay: index * 0.1 },
+                          }}
+                          className="w-full"
                         >
-                          <motion.span
-                            className="text-white block text-lg font-semibold drop-shadow-md"
-                            whileHover={{ x: 3 }}
-                            transition={{
-                              type: "spring",
-                              stiffness: 400,
-                              damping: 10,
-                            }}
+                          <button
+                            onClick={() => handleSelectScenario(scenario)}
+                            disabled={isLoading}
+                            className="w-full p-4 bg-slate-800/70 border border-purple-500/30 rounded-lg hover:bg-purple-900/30 hover:border-purple-400/50 text-left transition-all duration-200 disabled:opacity-50 group"
                           >
-                            {scenario.scenario_text}
-                          </motion.span>
-                          {timeLeft <= 15 && (
-                            <motion.div
-                              className="w-full h-1 mt-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
-                              initial={{ width: "0%" }}
-                              animate={{ width: "100%" }}
-                              transition={{ duration: 0.5 }}
-                            />
-                          )}
-                        </motion.button>
+                            <motion.span
+                              className="text-white block text-lg font-semibold drop-shadow-md"
+                              whileHover={{ x: 3 }}
+                              transition={{
+                                type: "spring",
+                                stiffness: 400,
+                                damping: 10,
+                              }}
+                            >
+                              {scenario.scenario_text}
+                            </motion.span>
+                            {timeLeft <= 15 && (
+                              <motion.div
+                                className="w-full h-1 mt-3 rounded-full bg-gradient-to-r from-purple-500 to-pink-500"
+                                initial={{ width: "0%" }}
+                                animate={{ width: "100%" }}
+                                transition={{ duration: 0.5 }}
+                              />
+                            )}
+                          </button>
+                        </motion.div>
                       ))}
-                    </>
-                  )}
+                    </div>
+                  ) : null}
                 </motion.div>
               </AnimatePresence>
 
@@ -291,14 +295,16 @@ export function ScenarioSelection({
                     <div className="w-5 h-5 border-2 border-t-white border-white/30 rounded-full animate-spin mr-2" />
                     Generating...
                   </span>
-                ) : (
+                ) : scenarios.length ? (
                   "Generate New Scenarios"
+                ) : (
+                  "Generate Scenarios"
                 )}
               </GradientButton>
             </AcernityCard>
 
-            <AcernityCard className="border-purple-500/20 sticky bottom-4">
-              <div className="mb-4">
+            <AcernityCard className="border-purple-500/20">
+              <div>
                 <label className="block text-sm font-semibold text-purple-100 mb-2">
                   Custom Scenario
                 </label>

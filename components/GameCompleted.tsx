@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Trophy, User, Share2, Home } from "lucide-react";
 import { Player } from "@/types/types";
@@ -7,6 +7,7 @@ import { Sparkles } from "@/components/ui/acernity/Sparkles";
 import { GlowingText } from "@/components/ui/acernity/glowing-text";
 import { AcernityCard } from "@/components/ui/acernity/card";
 import { GradientButton } from "@/components/ui/acernity/gradient-button";
+import { resetAllStores } from "@/store/store-util";
 
 interface GameCompletedProps {
   players: Player[];
@@ -22,6 +23,17 @@ export function GameCompleted({ players }: GameCompletedProps) {
   );
   const winner = sortedPlayers[0];
 
+  // Set up auto-reset timer (1 minute)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      handleResetAndReturn();
+    }, 60000); // 60 seconds = 1 minute
+
+    return () => {
+      clearTimeout(timer); // Clean up timer on unmount
+    };
+  }, []);
+
   const handleShareResults = () => {
     const results = `Game Results:\n${sortedPlayers
       .map((p, i) => `${i + 1}. ${p.nickname}: ${p.total_points} points`)
@@ -32,10 +44,15 @@ export function GameCompleted({ players }: GameCompletedProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleReturnHome = () => {
-    // Clear game data
+  const handleResetAndReturn = () => {
+    // Reset all stores using the utility function
+    resetAllStores();
+
+    // Clear game data from localStorage
     localStorage.removeItem("currentUser");
     localStorage.removeItem("currentRoom");
+
+    // Navigate to home
     router.push("/");
   };
 
@@ -144,7 +161,7 @@ export function GameCompleted({ players }: GameCompletedProps) {
         </GradientButton>
 
         <GradientButton
-          onClick={handleReturnHome}
+          onClick={handleResetAndReturn}
           className="w-full py-3 flex items-center justify-center"
           gradientFrom="from-gray-600"
           gradientTo="to-gray-700"

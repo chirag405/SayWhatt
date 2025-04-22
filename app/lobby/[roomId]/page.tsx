@@ -187,6 +187,7 @@ export default function LobbyScreen() {
   }, [currentRoom?.game_status, router, currentRoom?.id]);
 
   // Function to start the game with better error handling
+
   const handleStartGame = async () => {
     if (!currentRoom || !currentUser) {
       setError("Missing room or user information");
@@ -206,31 +207,31 @@ export default function LobbyScreen() {
         throw new Error("Failed to start game");
       }
 
-      console.log(
-        "Game started successfully, game status should update via subscription"
-      );
+      console.log("Game started successfully, beginning navigation");
 
-      // Force a manual check to ensure we get the latest room status
-      await refreshRoomStatus(currentRoom.id);
+      // First attempt to navigate directly - no status check needed since we just started the game
+      router.push(`/game/${currentRoom.id}`);
 
-      // Force navigation with a delay if subscription doesn't trigger quickly enough
-      setTimeout(() => {
-        if (currentRoom?.game_status === "in_progress") {
-          console.log("Forcing navigation to game screen");
-          router.push(`/game/${currentRoom.id}`);
-        } else {
-          // If status still hasn't updated, try once more with a force flag
-          refreshRoomStatus(currentRoom.id).then(() => {
-            if (currentRoom?.game_status === "in_progress") {
-              router.push(`/game/${currentRoom.id}`);
-            } else {
-              console.error("Game started but status not updated");
-              setError("Game started but status not updated. Please refresh.");
-              setIsStarting(false);
-            }
-          });
+      // As a backup, if navigation doesn't happen quickly for some reason,
+      // check the status but don't show errors
+      const navigationTimeout = setTimeout(async () => {
+        try {
+          await refreshRoomStatus(currentRoom.id);
+
+          // Double-check we're still on this page before trying to navigate again
+          if (window.location.pathname.includes(`/lobby/${currentRoom.id}`)) {
+            console.log("Backup navigation to game");
+            router.push(`/game/${currentRoom.id}`);
+          }
+        } catch (e) {
+          // Silent error - we're just using this as a backup
+          console.log(
+            "Backup navigation check failed, but primary should work"
+          );
         }
-      }, 1000);
+      }, 1500);
+
+      return () => clearTimeout(navigationTimeout);
     } catch (error) {
       console.error("Error starting game:", error);
       setError(error instanceof Error ? error.message : "Failed to start game");
