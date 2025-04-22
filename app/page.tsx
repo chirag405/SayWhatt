@@ -11,8 +11,8 @@ import {
   CardBody,
   CardItem,
 } from "@/components/ui/acernity/ThreeDCard";
-
 import Meteors from "@/components/ui/acernity/meteors";
+import GameStatistics from "@/components/GameStats";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -131,7 +131,7 @@ export default function HomeScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Background Effects */}
       <BackgroundBeams className="opacity-20" />
       <Spotlight className="-top-40 left-0 md:left-60 md:-top-20" fill="blue" />
@@ -395,6 +395,11 @@ export default function HomeScreen() {
           </CardBody>
         </CardContainer>
       </motion.div>
+
+      {/* Statistics Footer */}
+      <div className="mt-8 relative z-10">
+        <GameStatistics />
+      </div>
     </div>
   );
 }

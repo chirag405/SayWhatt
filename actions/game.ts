@@ -957,3 +957,36 @@ export const getScenarioById = async (scenarioId: string) => {
 
   return scenario;
 };
+
+export async function fetchGameStatistics() {
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase
+      .from("game_statistics")
+      .select("rooms_created, players_participated, last_updated")
+      .single();
+
+    if (error) {
+      console.error("Error fetching game statistics:", error);
+      return {
+        success: false,
+        data: null,
+        error: "Failed to load statistics",
+      };
+    }
+
+    return {
+      success: true,
+      data,
+      error: null,
+    };
+  } catch (error) {
+    console.error("Unexpected error fetching game statistics:", error);
+    return {
+      success: false,
+      data: null,
+      error: "An unexpected error occurred",
+    };
+  }
+}
