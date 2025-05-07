@@ -6,6 +6,7 @@ import { AcernityCard } from "@/components/ui/acernity/card";
 import { GradientButton } from "@/components/ui/acernity/gradient-button";
 import { Sparkles } from "@/components/ui/acernity/Sparkles";
 import { GlowingText } from "@/components/ui/acernity/glowing-text";
+import { playSound, SOUND_PATHS } from "@/utils/soundUtils"; // Added sound imports
 
 interface CategorySelectionProps {
   roundId: string;
@@ -35,10 +36,10 @@ export function CategorySelection({
   const currentStatus = currentTurn?.status;
 
   const categories = [
-    { id: "everyday", name: "Everyday Life", color: "blue" },
-    { id: "tech", name: "Technology", color: "purple" },
-    { id: "entertainment", name: "Entertainment", color: "pink" },
-    { id: "hypothetical", name: "Hypothetical Scenarios", color: "green" },
+    { id: "relationship", name: "Relationship Drama", color: "rose" },
+    { id: "chaos", name: "Hilarious Chaos", color: "yellow" },
+    { id: "lifedeath", name: "Life-or-Death Dilemmas", color: "red" },
+    { id: "embarrassing", name: "Embarrassing Moments", color: "orange" },
   ];
 
   const handleSelectCategory = async (category: string) => {
@@ -56,10 +57,10 @@ export function CategorySelection({
       if (!result) {
         setError("Failed to select category. Please try again.");
         setSelectedCategory(null);
+      } else {
+        // Play the category selection sound when a category is selected
+        playSound(SOUND_PATHS.categorySelect, "category");
       }
-
-      // We don't need to manually update local state anymore
-      // The subscription will handle that
     } catch (err) {
       console.error("Error selecting category:", err);
       setError("An error occurred while selecting the category.");

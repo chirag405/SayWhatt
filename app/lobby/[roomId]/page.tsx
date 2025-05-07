@@ -11,6 +11,8 @@ import BackgroundBeams from "@/components/ui/acernity/background-beams";
 import Spotlight from "@/components/ui/acernity/spotlight";
 import GamingIllustration from "@/components/ui/acernity/gaming-illustration";
 import AcernitySpotlight from "@/components/ui/acernity/spotlight";
+import { createClient } from "@/utils/supabase/client";
+
 import {
   CardContainer,
   CardBody,
@@ -28,9 +30,19 @@ import {
   PlayCircle,
 } from "lucide-react";
 
+// Add sound imports at the top of the imports
+import {
+  playSound,
+  SOUND_PATHS,
+  preloadSounds,
+  stopSound,
+} from "@/utils/soundUtils";
+import { SoundSettings } from "@/components/SoundSettings";
+
 export default function LobbyScreen() {
   const router = useRouter();
   const params = useParams();
+  const supabase = createClient();
   const {
     currentRoom,
     currentUser,
@@ -55,6 +67,19 @@ export default function LobbyScreen() {
   const [copySuccess, setCopySuccess] = useState(false);
 
   useTabCloseHandler(currentUser?.id || null, currentRoom?.id || null);
+
+  // Preload sounds when component mounts
+  useEffect(() => {
+    preloadSounds();
+
+    // Play lobby music when user enters the lobby - with loop=true
+    playSound(SOUND_PATHS.lobby, "lobby", true);
+
+    return () => {
+      // Clean up sounds when component unmounts
+      Object.values(SOUND_PATHS).forEach((path) => stopSound(path));
+    };
+  }, []);
 
   // Fetch initial data with better error handling
   useEffect(() => {
@@ -165,6 +190,25 @@ export default function LobbyScreen() {
     };
   }, [currentRoom?.id]);
 
+  // Listen for player join events to play sounds
+  useEffect(() => {
+    // Only play sounds if we're in the lobby
+    if (!currentRoom?.id || currentRoom?.game_status !== "waiting") return;
+
+    const playerJoinChannel = supabase.channel(`player-join-${currentRoom.id}`);
+
+    playerJoinChannel
+      .on("broadcast", { event: "player-joined" }, () => {
+        // Play sound when a new player joins
+        playSound(SOUND_PATHS.playerJoin, "lobby");
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(playerJoinChannel);
+    };
+  }, [currentRoom?.id, currentRoom?.game_status]);
+
   // More robust redirect to game when game status changes
   useEffect(() => {
     let redirectTimeout: NodeJS.Timeout;
@@ -199,6 +243,9 @@ export default function LobbyScreen() {
 
     try {
       console.log("Starting game for room:", currentRoom.id);
+
+      // Play transition sound when starting the game
+      playSound(SOUND_PATHS.transition, "results");
 
       // Call startGame from the game store
       const success = await startGame(currentRoom.id, currentUser.id);
@@ -360,6 +407,11 @@ export default function LobbyScreen() {
   console.log("room status:", currentRoom.game_status);
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 p-4 overflow-hidden relative">
+      {/* Sound Settings Button - positioned in top-right corner */}
+      <div className="absolute top-4 right-4 z-20">
+        <SoundSettings />
+      </div>
+
       <BackgroundBeams className="opacity-20" />
       <AcernitySpotlight
         className="-top-40 -left-20 md:left-60 md:-top-20"

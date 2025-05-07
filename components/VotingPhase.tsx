@@ -1,7 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase/client";
-import { ThumbsUp, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ThumbsUp,
+  ThumbsDown,
+  Clock,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 import { useGameStore } from "@/store/game-store";
 import { useUserRoomStore } from "@/store/user-room-store";
@@ -9,6 +15,7 @@ import { AcernityCard } from "@/components/ui/acernity/card";
 import { GradientButton } from "@/components/ui/acernity/gradient-button";
 import { Sparkles } from "@/components/ui/acernity/Sparkles";
 import { GlowingText } from "@/components/ui/acernity/glowing-text";
+import { playSound, SOUND_PATHS } from "@/utils/soundUtils";
 
 interface VotingPhaseProps {
   turnId: string;
@@ -116,7 +123,34 @@ export function VotingPhase({
     console.log("Current user:", currentUser);
   }, [isHost, currentUser]);
 
-  const handleVote = async (answerId: string) => {
+  // Add the effect to listen for vote events for sound playback
+  useEffect(() => {
+    const voteChannel = supabase.channel(`vote-sounds:${turnId}`);
+
+    voteChannel
+      .on("broadcast", { event: "vote-cast" }, (payload) => {
+        // Play the appropriate vote sound based on the vote type
+        if (payload.payload.voteType === "up") {
+          // Ensure we respect sound settings
+          playSound(SOUND_PATHS.voteUp, "voting");
+        } else if (payload.payload.voteType === "down") {
+          // Ensure we respect sound settings
+          playSound(SOUND_PATHS.voteDown, "voting");
+        }
+      })
+      .subscribe((status) => {
+        console.log(`Vote sound channel status: ${status}`);
+      });
+
+    return () => {
+      supabase.removeChannel(voteChannel);
+    };
+  }, [turnId]);
+
+  const handleVote = async (
+    answerId: string,
+    voteType: "up" | "down" = "up"
+  ) => {
     if (hasVoted[answerId]) return;
 
     setIsLoading(true);
@@ -126,12 +160,29 @@ export function VotingPhase({
       const result = await submitVote(answerId, currentUserId);
       if (result.success) {
         setHasVoted((prev) => ({ ...prev, [answerId]: true }));
+
+        // Play vote sound locally based on vote type
+        playSound(
+          voteType === "up" ? SOUND_PATHS.voteUp : SOUND_PATHS.voteDown,
+          "voting"
+        );
+
+        // Broadcast vote to all clients for synchronized sound playback
+        supabase
+          .channel(`vote-sounds:${turnId}`)
+          .send({
+            type: "broadcast",
+            event: "vote-cast",
+            payload: { voteType },
+          })
+          .then(() => console.log(`${voteType} vote sound broadcast sent`))
+          .catch((err) => console.error("Error broadcasting vote sound:", err));
       } else {
-        setError("Failed to submit vote. Please try again.");
+        setError("Failed to submit vote");
       }
     } catch (err) {
       console.error("Error submitting vote:", err);
-      setError("An error occurred while voting.");
+      setError("An error occurred while voting");
     } finally {
       setIsLoading(false);
     }
@@ -205,6 +256,9 @@ export function VotingPhase({
 
       if (!result) {
         setError("Failed to proceed. Please try again.");
+      } else {
+        // Play transition sound
+        playSound(SOUND_PATHS.transition, "results");
       }
     } catch (err) {
       console.error("Error proceeding after voting:", err);
@@ -304,7 +358,7 @@ export function VotingPhase({
 
               <div className="flex justify-center space-x-4 mt-6">
                 <motion.button
-                  onClick={() => handleVote(currentAnswer.id)}
+                  onClick={() => handleVote(currentAnswer.id, "up")}
                   disabled={hasVoted[currentAnswer.id] || isLoading}
                   className={`px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 ${
                     hasVoted[currentAnswer.id]
@@ -317,6 +371,23 @@ export function VotingPhase({
                   <div className="flex items-center">
                     <ThumbsUp className="w-5 h-5 mr-2" />
                     {hasVoted[currentAnswer.id] ? "Voted" : "Upvote"}
+                  </div>
+                </motion.button>
+
+                <motion.button
+                  onClick={() => handleVote(currentAnswer.id, "down")}
+                  disabled={hasVoted[currentAnswer.id] || isLoading}
+                  className={`px-6 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 ${
+                    hasVoted[currentAnswer.id]
+                      ? "bg-gradient-to-r from-purple-500 to-purple-600"
+                      : ""
+                  }`}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <div className="flex items-center">
+                    <ThumbsDown className="w-5 h-5 mr-2" />
+                    {hasVoted[currentAnswer.id] ? "Voted" : "Downvote"}
                   </div>
                 </motion.button>
               </div>

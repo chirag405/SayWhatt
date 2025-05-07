@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,11 +23,22 @@ import { AcernityCard } from "@/components/ui/acernity/card";
 import { GradientButton } from "@/components/ui/acernity/gradient-button";
 import AcernitySpotlight from "@/components/ui/acernity/spotlight";
 import { GlowingText } from "@/components/ui/acernity/glowing-text";
+import { SoundSettings } from "@/components/SoundSettings";
+
+// Sound utilities
+import {
+  preloadSounds,
+  playSound,
+  stopAllSounds,
+  SOUND_PATHS,
+} from "@/utils/soundUtils";
+import { createClient } from "@/utils/supabase/client";
 
 export default function GameScreen() {
   const router = useRouter();
   const params = useParams();
   const roomId = params?.roomId as string;
+  const supabase = createClient();
 
   // State
   const [isLoading, setIsLoading] = useState(true);
@@ -39,6 +50,12 @@ export default function GameScreen() {
     round: boolean;
   }>({ main: false, turn: false, round: false });
   const [animationComplete, setAnimationComplete] = useState(false);
+
+  // References for tracking previous state
+  const prevTurnStateRef = useRef<string | null>(null);
+  const prevRoundNumberRef = useRef<number | null>(null);
+  const timerTickRef = useRef<NodeJS.Timeout | null>(null);
+  const timerEndValueRef = useRef<string | null>(null);
 
   // Store hooks
   const {
@@ -73,8 +90,127 @@ export default function GameScreen() {
   const totalRounds = currentRoom?.total_rounds || 0;
   const isDecider = currentTurn?.decider_id === currentUser?.id;
   const turnNumber = currentTurn?.turn_number || 0;
+  const timeLeft = timerEnd
+    ? Math.max(
+        0,
+        Math.floor((new Date(timerEnd).getTime() - Date.now()) / 1000)
+      )
+    : 0;
 
   useTabCloseHandler(currentUser?.id || null, currentRoom?.id || null);
+
+  // Preload sounds when component mounts
+  useEffect(() => {
+    preloadSounds();
+    return () => {
+      stopAllSounds();
+    };
+  }, []);
+
+  // Track timer end value for timer tick sound
+  useEffect(() => {
+    timerEndValueRef.current = timerEnd ? timerEnd.toISOString() : null;
+  }, [timerEnd]);
+
+  // Play timer tick sound during the last 10 seconds
+  useEffect(() => {
+    // Clear existing interval if any
+    if (timerTickRef.current) {
+      clearInterval(timerTickRef.current);
+      timerTickRef.current = null;
+    }
+
+    // Only set up interval if we're in the answering phase and have a timer
+    if (currentTurn?.status === "answering" && timerEnd) {
+      timerTickRef.current = setInterval(() => {
+        const endTime = new Date(timerEndValueRef.current || "").getTime();
+        const currentTime = Date.now();
+        const secondsLeft = Math.floor((endTime - currentTime) / 1000);
+
+        // Play tick sound in the last 10 seconds
+        if (secondsLeft > 0 && secondsLeft <= 10) {
+          playSound(SOUND_PATHS.timerTick, "category");
+        }
+
+        // Clear interval when time runs out
+        if (secondsLeft <= 0 && timerTickRef.current) {
+          clearInterval(timerTickRef.current);
+          timerTickRef.current = null;
+        }
+      }, 1000);
+    }
+
+    return () => {
+      if (timerTickRef.current) {
+        clearInterval(timerTickRef.current);
+        timerTickRef.current = null;
+      }
+    };
+  }, [currentTurn?.status, timerEnd]);
+
+  // Subscribe to real-time vote events to play voting sounds
+  useEffect(() => {
+    if (!currentTurn?.id) return;
+
+    const voteChannel = supabase.channel(`realtime-votes-${currentTurn.id}`);
+
+    voteChannel
+      .on("broadcast", { event: "vote-cast" }, (payload) => {
+        const { voteType } = payload.payload;
+        if (voteType === "up") {
+          playSound(SOUND_PATHS.voteUp, "voting");
+        } else if (voteType === "down") {
+          playSound(SOUND_PATHS.voteDown, "voting");
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(voteChannel);
+    };
+  }, [currentTurn?.id]);
+
+  // Listen for turn and round transitions to play sounds
+  useEffect(() => {
+    // Track if turn state changed
+    if (
+      prevTurnStateRef.current !== currentTurn?.status &&
+      currentTurn?.status
+    ) {
+      prevTurnStateRef.current = currentTurn.status;
+
+      // Play sound when category/scenario gets selected
+      if (
+        currentTurn.status === "selecting_scenario" ||
+        currentTurn.status === "answering"
+      ) {
+        playSound(SOUND_PATHS.categorySelect, "category");
+      }
+
+      // Play transition sound when turn status changes
+      if (
+        currentTurn.status === "voting" ||
+        currentTurn.status === "completed"
+      ) {
+        playSound(SOUND_PATHS.transition, "results");
+      }
+    }
+
+    // Track if round changed
+    if (prevRoundNumberRef.current !== roundNumber && roundNumber > 0) {
+      // Play transition sound when round changes
+      if (prevRoundNumberRef.current !== null) {
+        playSound(SOUND_PATHS.transition, "results");
+      }
+      prevRoundNumberRef.current = roundNumber;
+    }
+
+    // Play final results sound when game completes
+    if (gameCompleted && prevTurnStateRef.current !== "completed") {
+      playSound(SOUND_PATHS.resultsReveal, "results");
+      prevTurnStateRef.current = "completed";
+    }
+  }, [currentTurn?.status, roundNumber, gameCompleted]);
 
   // Data initialization and subscriptions
   useEffect(() => {
@@ -278,6 +414,11 @@ export default function GameScreen() {
 
   return (
     <AcernitySpotlight className="flex h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+      {/* Sound Settings Button - Positioned in top-right */}
+      <div className="absolute top-4 right-4 z-20">
+        <SoundSettings />
+      </div>
+
       {/* Sidebar */}
       <motion.div
         initial={{ x: -300, opacity: 0 }}

@@ -1,0 +1,64 @@
+{
+  "categories": [
+    {
+      "name": "relationships",
+      "scenarios": [
+        "You accidentally send a love confession meant for your crush… to your family group chat. What do you say next?",
+        "Your best friend is dating someone you secretly had a crush on. They just asked for your blessing. What do you reply?",
+        "Your ex texts you, “I miss us 🥺” right after you post a picture with your new partner. How do you respond?",
+        "You’re on a blind date and realize it’s your cousin. They don’t recognize you yet. What’s your move?",
+        "You’re at your wedding, and the officiant asks if anyone objects—and your ex stands up. What do you say?",
+        "Your partner says, “Let’s take a break,” and you accidentally reply “Ok bestie ❤️” instead of something emotional. What now?",
+        "You just proposed in public… and they say “Uhhh can we talk?” The crowd is watching. What’s your save?",
+        "You walk in on your best friend roleplaying as you… to impress someone. What do you do?",
+        "Your partner suddenly asks you to explain every ex you’ve had—ranked. What’s your top-3 list intro?",
+        "You find your partner’s secret finsta account where they roast your selfies. What’s your comment back?"
+      ]
+    },
+    {
+      "name": "life_or_death",
+      "scenarios": [
+        "You wake up on a deserted island with only a spoon and a pet chicken. What’s your survival plan?",
+        "A zombie says it’ll spare your life if you beat it in a rap battle. What are your opening bars?",
+        "You’re falling from a plane. You have 3 seconds and one phone call. Who do you call and why?",
+        "You're stuck in space with a talking AI toaster that’s plotting your doom. What do you say to calm it down?",
+        "A bear approaches your campsite, but it only attacks people wearing socks. You’re the only one with socks. What’s your move?",
+        "You're offered two buttons: one gives you a million dollars, the other releases snakes somewhere in the world. You accidentally press both. What’s your press conference speech?",
+        "You accidentally join a secret cult ritual in the forest. They hand you the sacred pineapple. What do you say to fit in?",
+        "You’re stuck in a horror movie, and the monster only kills people who don’t reply to texts fast enough. What's your message to buy time?",
+        "You drank a potion to become immortal, but now you’re permanently stuck in a group project. What’s your first eternal complaint?",
+        "The Grim Reaper gives you one chance to escape death—by making him laugh. What’s your killer joke?"
+      ]
+    },
+    {
+      "name": "chaos",
+      "scenarios": [
+        "You wake up with the ability to hear everyone’s thoughts… and they’re all judging your outfit. What’s your clapback?",
+        "You swap bodies with your pet for 24 hours. What’s the first thing you do?",
+        "You get cursed to scream your crush’s name every time someone says 'hello.' What’s your day at work like?",
+        "You accidentally open a portal to another dimension—in the middle of your bathroom. What do you shout in panic?",
+        "You’re invisible, but only while dancing. Someone walks in. What’s your panic routine?",
+        "Your fingers now shoot spaghetti instead of webs. How do you introduce your superhero alter ego?",
+        "You’re elected president by accident. Your first law?",
+        "You gain the power to pause time—but you can’t move while it’s paused. What’s the first dumb thing you try?",
+        "Your voice has been replaced with random celebrity impressions. You’re in an important meeting. What’s your intro line?",
+        "You’re chosen for a game show called 'Lick It or Leave It.' The first item: mystery sock. What’s your answer?"
+      ]
+    },
+    {
+      "name": "embarrassing",
+      "scenarios": [
+        "You trip and fall while dramatically entering a room… full of your crush's family. What’s your excuse?",
+        "You confidently answer a question in class—and realize the mic was muted. Twice. What do you say the third time?",
+        "You try to take a sneaky selfie—but your phone is screen sharing to the big projector. What’s your caption now?",
+        "You start singing your jam with full confidence… then realize you’ve got headphones on and the room is silent. What do you say?",
+        "You call your teacher 'Mom' in front of the whole class. What’s your damage control?",
+        "You’re caught practicing your award speech… in front of people who didn’t nominate you. What do you say?",
+        "You wave back at someone who wasn’t waving at you—and they saw it. How do you recover?",
+        "You were on mute during an online meeting… until you weren’t. Everyone just heard everything. What do you say?",
+        "Your phone reads out loud a very questionable search history in public. First thing you scream?",
+        "You try to do a cool TikTok dance and accidentally break a glass table. What’s your caption for the viral video?"
+      ]
+    }
+  ]
+}

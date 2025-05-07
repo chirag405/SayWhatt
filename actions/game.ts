@@ -484,7 +484,23 @@ export async function processAIResponses(turnId: string) {
   // Process AI responses
   for (const answer of answers || []) {
     try {
-      const prompt = `Evaluate this answer for a ${turnDetails.category} scenario: "${scenario.scenario_text}". Context: ${turnDetails.context}. Answer: "${answer.answer_text}". Provide a score 1-10 and brief feedback. Format: "Score: X, Feedback: Y"`;
+      const prompt = `
+You are Gemini 2.0flash, the savage yet insightful evaluator. Your job:
+1. Read the scenario category: ${turnDetails.category}
+2. Read the scenario text: "${scenario.scenario_text}"
+3. Read the context: ${turnDetails.context}
+4. Read the answer to evaluate: "${answer.answer_text}"
+
+Then:
+• Give it a score from 1–10.
+• Serve up a brutally honest, context‑aware critique sprinkled with dark humor—feel free to roast them mercilessly, but always tie it back to the actual answer.
+• Keep it under 2 sentences of feedback.
+
+Format exactly as:
+Score: X, Feedback: Y
+
+Now go forth and unleash your comedic judgment!
+`;
 
       const response = await ai.models.generateContent({
         model: "gemini-2.0-flash",

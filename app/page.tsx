@@ -13,6 +13,13 @@ import {
 } from "@/components/ui/acernity/ThreeDCard";
 import Meteors from "@/components/ui/acernity/meteors";
 import GameStatistics from "@/components/GameStats";
+import { SoundSettings } from "@/components/SoundSettings";
+import {
+  playSound,
+  preloadSounds,
+  stopSound,
+  SOUND_PATHS,
+} from "@/utils/soundUtils";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -36,10 +43,21 @@ export default function HomeScreen() {
   useEffect(() => {
     resetState();
 
+    // Preload sounds when the component mounts
+    preloadSounds();
+
+    // Stop any previous lobby music that might be playing
+    stopSound(SOUND_PATHS.lobby);
+
     // Delay showing the form for a better entrance animation
     setTimeout(() => {
       setIsFormVisible(true);
     }, 800);
+
+    return () => {
+      // We don't stop sounds when leaving the home page
+      // This allows lobby music to continue playing when transitioning to the lobby
+    };
   }, []);
 
   useEffect(() => {
@@ -132,6 +150,11 @@ export default function HomeScreen() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {/* Sound Settings Button - positioned in top-right corner */}
+      <div className="absolute top-4 right-4 z-20">
+        <SoundSettings />
+      </div>
+
       {/* Background Effects */}
       <BackgroundBeams className="opacity-20" />
       <Spotlight className="-top-40 left-0 md:left-60 md:-top-20" fill="blue" />

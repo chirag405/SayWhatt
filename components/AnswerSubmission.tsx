@@ -148,18 +148,48 @@ export function AnswerSubmission({
     }
   };
 
+  // If there's no scenario yet, show a waiting state
   if (!scenario) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex flex-col items-center justify-center h-full">
         <motion.div
           animate={{ scale: [1, 1.05, 1] }}
           transition={{ duration: 2, repeat: Infinity }}
+          className="mb-6"
         >
           <div className="w-12 h-12 border-4 border-t-purple-500 border-purple-300 rounded-full animate-spin" />
         </motion.div>
-        <span className="ml-3 text-lg text-purple-300">
-          Loading scenario...
-        </span>
+
+        {currentDecider && (
+          <AcernityCard className="mb-6 backdrop-blur-md border-purple-300/20 max-w-md">
+            <div className="p-6 text-center">
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-xl mb-2 text-white"
+              >
+                <span className="font-bold text-purple-300">
+                  {currentDecider.nickname}
+                </span>{" "}
+                is choosing a scenario
+              </motion.p>
+
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="text-sm text-gray-300"
+              >
+                Please wait while the decider selects a scenario for this
+                round...
+              </motion.p>
+            </div>
+          </AcernityCard>
+        )}
+
+        {!currentDecider && (
+          <span className="text-lg text-purple-300">Loading scenario...</span>
+        )}
       </div>
     );
   }
@@ -172,35 +202,67 @@ export function AnswerSubmission({
         className="w-full max-w-3xl"
       >
         <Sparkles>
-          <GlowingText className="text-2xl font-bold mb-6">
+          <GlowingText className="text-3xl font-bold mb-6 text-center">
             Submit Your Answer
           </GlowingText>
         </Sparkles>
 
-        <AcernityCard className="mb-6 backdrop-blur-md border-purple-300/20">
-          <div className="p-6">
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-xl mb-4 text-white"
-            >
-              {scenario.scenario_text}
-            </motion.p>
+        {/* Enhanced Scenario Card */}
+        <AcernityCard className="mb-8 backdrop-blur-md border-purple-400/30 shadow-lg shadow-purple-500/20">
+          <div className="relative overflow-hidden">
+            {/* Animated gradient background */}
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-900/50 to-blue-900/50 animate-gradient-slow" />
 
-            {currentTurn?.context && (
+            {/* Scenario Content */}
+            <div className="p-8 relative z-10">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.2 }}
+                className="flex items-center mb-3"
+              >
+                <div className="h-4 w-4 rounded-full bg-purple-500 mr-2 pulse-animation"></div>
+                <h3 className="text-lg font-medium text-purple-300">
+                  Scenario
+                </h3>
+              </motion.div>
+
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="p-3 bg-slate-700/50 backdrop-blur-sm rounded-lg border border-purple-500/20"
+                transition={{ delay: 0.3 }}
+                className="bg-slate-900/70 backdrop-blur-md p-5 rounded-lg border border-purple-500/30 shadow-inner shadow-purple-600/10"
               >
-                <p className="text-sm text-purple-200">
-                  <span className="font-medium">Context:</span>{" "}
-                  {currentTurn.context}
+                <p className="text-xl text-white font-medium leading-relaxed">
+                  {scenario.scenario_text}
                 </p>
               </motion.div>
-            )}
+
+              {currentTurn?.context && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="mt-4 p-4 bg-blue-900/30 backdrop-blur-sm rounded-lg border border-blue-500/30"
+                >
+                  <div className="flex items-center mb-2">
+                    <svg
+                      className="w-5 h-5 text-blue-400 mr-2"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                    <span className="font-medium text-blue-300">Context</span>
+                  </div>
+                  <p className="text-blue-100">{currentTurn.context}</p>
+                </motion.div>
+              )}
+            </div>
           </div>
         </AcernityCard>
 
@@ -221,22 +283,25 @@ export function AnswerSubmission({
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.5 }}
           >
-            <textarea
-              className="w-full p-4 rounded-lg bg-slate-800/80 border border-purple-500/30 text-white placeholder-gray-400 focus:border-purple-400 focus:ring focus:ring-purple-500/20 transition-all mb-4"
-              placeholder="Write your answer here..."
-              rows={5}
-              value={answer}
-              onChange={(e) => setAnswer(e.target.value)}
-              disabled={hasSubmitted || isSubmitting}
-            />
+            <div className="relative group">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg blur opacity-40 group-hover:opacity-70 transition duration-300"></div>
+              <textarea
+                className="relative w-full p-4 rounded-lg bg-slate-800/90 border border-purple-500/30 text-white placeholder-gray-400 focus:border-purple-400 focus:ring focus:ring-purple-500/20 transition-all mb-4"
+                placeholder="Write your answer here..."
+                rows={5}
+                value={answer}
+                onChange={(e) => setAnswer(e.target.value)}
+                disabled={hasSubmitted || isSubmitting}
+              />
+            </div>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
+            transition={{ delay: 0.6 }}
           >
             <GradientButton
               onClick={handleSubmitAnswer}
@@ -295,7 +360,7 @@ export function AnswerSubmission({
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
+            transition={{ delay: 0.7 }}
             className="mt-6 p-4 bg-amber-800/20 border-l-4 border-amber-500 text-amber-300 rounded"
           >
             <p className="font-semibold">
