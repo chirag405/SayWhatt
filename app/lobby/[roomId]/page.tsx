@@ -1,25 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useParams } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useUserRoomStore } from "@/store/user-room-store";
 import { useTabCloseHandler } from "@/utils/useTabCloseHandler";
 import { useGameStore } from "@/store/game-store";
 import { motion, AnimatePresence } from "framer-motion";
-import BackgroundBeams from "@/components/ui/acernity/background-beams";
-import Spotlight from "@/components/ui/acernity/spotlight";
-import GamingIllustration from "@/components/ui/acernity/gaming-illustration";
-import AcernitySpotlight from "@/components/ui/acernity/spotlight";
 import { createClient } from "@/utils/supabase/client";
 
-import {
-  CardContainer,
-  CardBody,
-  CardItem,
-} from "@/components/ui/acernity/ThreeDCard";
+// Aceternity UI Imports
+import BackgroundBeams from "@/components/ui/background-beams";
 
-import Meteors from "@/components/ui/acernity/meteors";
+import { CardContainer, CardBody, CardItem } from "@/components/ui/3d-card"; // Updated import for TypeScript support
+
+import { Vortex } from "@/components/ui/vortex"; // NEW
+import { TextGenerateEffect } from "@/components/ui/text-generate-effect"; // NEW
+import { Button as AceternityButton } from "@/components/ui/moving-border"; // NEW
+import { HoverBorderGradient } from "@/components/ui/hover-border-gradient"; // NEW (Optional for extra flair)
+// Lucide Icons
 import {
   Users,
   Crown,
@@ -28,16 +26,37 @@ import {
   ChevronDown,
   LogOut,
   PlayCircle,
+  Info, // For How to Play
+  AlertTriangle, // For errors
 } from "lucide-react";
 
-// Add sound imports at the top of the imports
+// Sound Utilities
 import {
   playSound,
   SOUND_PATHS,
   preloadSounds,
   stopSound,
+  stopAllSounds,
+  checkAndStartLobbyMusic,
 } from "@/utils/soundUtils";
 import { SoundSettings } from "@/components/SoundSettings";
+import { Meteors } from "@/components/ui/meteors";
+import { Spotlight } from "@/components/ui/spotlight";
+
+// Placeholder for a more gamified loading spinner
+const GamifiedLoader = ({ text }: { text: string }) => (
+  <div className="flex flex-col items-center justify-center space-y-4">
+    <div className="relative">
+      <div className="w-16 h-16 border-4 border-t-purple-500 border-r-blue-500 border-b-pink-500 border-l-transparent rounded-full animate-spin"></div>
+      <PlayCircle className="absolute inset-0 m-auto h-8 w-8 text-cyan-400 animate-pulse" />
+    </div>
+    <TextGenerateEffect
+      words={text}
+      className="text-xl font-semibold text-slate-200"
+      duration={0.5}
+    />
+  </div>
+);
 
 export default function LobbyScreen() {
   const router = useRouter();
@@ -56,612 +75,786 @@ export default function LobbyScreen() {
     refreshRoomStatus,
   } = useUserRoomStore();
 
-  // Import the startGame function directly from the game store
   const { startGame } = useGameStore();
 
   const [isLeaving, setIsLeaving] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState("");
-  const [subscriptionsActive, setSubscriptionsActive] = useState(false);
+  const [subscriptionsActive, setSubscriptionsActive] = useState(false); // Kept for dev info
   const [showHelp, setShowHelp] = useState(false);
-  const [copySuccess, setCopySuccess] = useState(false);
+  const [copySuccess, setCopySuccess] = useState(""); // Changed to string for better animation key
 
   useTabCloseHandler(currentUser?.id || null, currentRoom?.id || null);
 
-  // Preload sounds when component mounts
   useEffect(() => {
+    // Ensure sounds are preloaded first
     preloadSounds();
 
-    // Play lobby music when user enters the lobby - with loop=true
-    playSound(SOUND_PATHS.lobby, "lobby", true);
+    // Don't check or start lobby music - it should already be playing from the home page
+    // This avoids duplicate sound instances
 
     return () => {
-      // Clean up sounds when component unmounts
-      Object.values(SOUND_PATHS).forEach((path) => stopSound(path));
+      // Only stop lobby music when actually leaving the app
+      // Don't stop when navigating to game page
+      if (!window.location.pathname.includes("/game/")) {
+        console.log("Leaving lobby, stopping music");
+        stopSound(SOUND_PATHS.lobby);
+      }
     };
   }, []);
 
-  // Fetch initial data with better error handling
+  // Separate function for playing UI sounds
+  const playClickSound = () => {
+    playSound(SOUND_PATHS.categorySelect, "category", false);
+  };
+
   useEffect(() => {
     let mounted = true;
-
     const loadData = async () => {
       try {
         if (!params.roomId) {
           router.push("/");
           return;
         }
-
-        // Only fetch if we don't have the room or it's a different room
         if (!currentRoom || currentRoom.id !== params.roomId) {
-          const { room, success, error } = await fetchRoomById(
-            params.roomId as string
-          );
-
+          const {
+            room,
+            success,
+            error: fetchError,
+          } = await fetchRoomById(params.roomId as string);
           if (!mounted) return;
-
           if (!success || !room) {
-            console.log("Failed to fetch room or room not found:", error);
+            console.log("Failed to fetch room:", fetchError);
             router.push("/");
             return;
           }
-
           if (room.game_status === "in_progress") {
-            console.log("Game in progress, redirecting to game screen");
             router.push(`/game/${room.id}`);
             return;
           }
         }
-
         if (!mounted) return;
-
         if (currentRoom?.game_status === "in_progress") {
-          console.log("Room status is in_progress, redirecting to game");
           router.push(`/game/${currentRoom.id}`);
           return;
         }
-
         if (!currentUser) {
-          console.log("No current user, redirecting to home");
           router.push("/");
           return;
         }
-
         if (currentRoom && mounted) {
-          try {
-            await fetchPlayersInRoom(currentRoom.id);
-          } catch (playerErr) {
-            console.error("Error fetching players:", playerErr);
-            // Continue anyway to show at least the room
-          }
+          await fetchPlayersInRoom(currentRoom.id);
         }
       } catch (err) {
         console.error("Error in loadData:", err);
-        if (mounted) {
-          setError("Failed to load game data. Please try again.");
-        }
+        if (mounted)
+          setError(
+            "System Malfunction: Failed to load game data. Please try re-entering the portal."
+          );
       }
     };
-
     loadData();
-
     return () => {
       mounted = false;
     };
-  }, [params.roomId]);
+  }, [params.roomId, currentRoom?.id]); // Added currentRoom.id to dependencies
 
-  // Set up subscriptions when room is loaded - better error handling
   useEffect(() => {
-    if (!currentRoom) return;
-
+    if (!currentRoom?.id) return;
     let mounted = true;
     const cleanupFunctions: (() => void)[] = [];
-
-    console.log("Setting up subscriptions for room:", currentRoom.id);
-
     try {
-      const unsubscribeRoom = subscribeToRoom(currentRoom.id);
-      cleanupFunctions.push(unsubscribeRoom);
-
-      const unsubscribePlayers = subscribeToPlayers(currentRoom.id);
-      cleanupFunctions.push(unsubscribePlayers);
-
-      if (mounted) {
-        setSubscriptionsActive(true);
-      }
+      cleanupFunctions.push(subscribeToRoom(currentRoom.id));
+      cleanupFunctions.push(subscribeToPlayers(currentRoom.id));
+      if (mounted) setSubscriptionsActive(true);
     } catch (err) {
       console.error("Error setting up subscriptions:", err);
-      if (mounted) {
-        setError("Connection issues. Please refresh the page.");
-      }
+      if (mounted)
+        setError(
+          "Connection Anomaly: Real-time updates might be unstable. Refresh advised."
+        );
     }
-
     return () => {
       mounted = false;
-      console.log("Cleaning up subscriptions");
       cleanupFunctions.forEach((cleanup) => {
         try {
           cleanup();
         } catch (e) {
-          console.error("Error during subscription cleanup:", e);
+          console.error("Cleanup Error:", e);
         }
       });
       setSubscriptionsActive(false);
     };
   }, [currentRoom?.id]);
 
-  // Listen for player join events to play sounds
   useEffect(() => {
-    // Only play sounds if we're in the lobby
     if (!currentRoom?.id || currentRoom?.game_status !== "waiting") return;
-
     const playerJoinChannel = supabase.channel(`player-join-${currentRoom.id}`);
-
     playerJoinChannel
       .on("broadcast", { event: "player-joined" }, () => {
-        // Play sound when a new player joins
         playSound(SOUND_PATHS.playerJoin, "lobby");
       })
       .subscribe();
-
     return () => {
       supabase.removeChannel(playerJoinChannel);
     };
-  }, [currentRoom?.id, currentRoom?.game_status]);
+  }, [currentRoom?.id, currentRoom?.game_status, supabase]); // Added supabase to dependencies
 
-  // More robust redirect to game when game status changes
   useEffect(() => {
     let redirectTimeout: NodeJS.Timeout;
-
-    console.log("Current room status check:", currentRoom?.game_status);
     if (currentRoom?.game_status === "in_progress") {
-      console.log("Redirecting to game screen for room:", currentRoom.id);
-
-      // Add a small delay to ensure all state is updated before navigation
-      redirectTimeout = setTimeout(() => {
-        router.push(`/game/${currentRoom.id}`);
-      }, 100);
+      redirectTimeout = setTimeout(
+        () => router.push(`/game/${currentRoom.id}`),
+        100
+      );
     }
-
     return () => {
-      if (redirectTimeout) {
-        clearTimeout(redirectTimeout);
-      }
+      if (redirectTimeout) clearTimeout(redirectTimeout);
     };
   }, [currentRoom?.game_status, router, currentRoom?.id]);
 
-  // Function to start the game with better error handling
-
   const handleStartGame = async () => {
     if (!currentRoom || !currentUser) {
-      setError("Missing room or user information");
+      setError("Critical Error: Room or User data missing.");
       return;
     }
-
     setIsStarting(true);
     setError("");
-
     try {
-      console.log("Starting game for room:", currentRoom.id);
-
-      // Play transition sound when starting the game
+      stopAllSounds();
       playSound(SOUND_PATHS.transition, "results");
-
-      // Call startGame from the game store
       const success = await startGame(currentRoom.id, currentUser.id);
-
-      if (!success) {
-        throw new Error("Failed to start game");
-      }
-
-      console.log("Game started successfully, beginning navigation");
-
-      // First attempt to navigate directly - no status check needed since we just started the game
+      if (!success) throw new Error("Game failed to initialize.");
       router.push(`/game/${currentRoom.id}`);
-
-      // As a backup, if navigation doesn't happen quickly for some reason,
-      // check the status but don't show errors
-      const navigationTimeout = setTimeout(async () => {
-        try {
-          await refreshRoomStatus(currentRoom.id);
-
-          // Double-check we're still on this page before trying to navigate again
-          if (window.location.pathname.includes(`/lobby/${currentRoom.id}`)) {
-            console.log("Backup navigation to game");
-            router.push(`/game/${currentRoom.id}`);
-          }
-        } catch (e) {
-          // Silent error - we're just using this as a backup
-          console.log(
-            "Backup navigation check failed, but primary should work"
-          );
-        }
-      }, 1500);
-
-      return () => clearTimeout(navigationTimeout);
+      // Backup navigation removed for brevity as primary push should be reliable with Next.js router.
     } catch (error) {
       console.error("Error starting game:", error);
-      setError(error instanceof Error ? error.message : "Failed to start game");
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Launch Sequence Failed. Try again."
+      );
       setIsStarting(false);
     }
   };
 
-  // Poll for room status periodically as backup - with error handling
   useEffect(() => {
+    // Status Polling
     if (!currentRoom?.id) return;
-
     let pollCount = 0;
-    const MAX_POLLS = 30; // Stop polling after ~90 seconds
-
+    const MAX_POLLS = 30;
     const statusInterval = setInterval(async () => {
       pollCount++;
-      console.log(
-        `Polling for room status updates (${pollCount}/${MAX_POLLS})`
-      );
-
       try {
         await refreshRoomStatus(currentRoom.id);
-
-        // If we've been polling too long, stop to save resources
-        if (pollCount >= MAX_POLLS) {
-          console.log("Max polling attempts reached, stopping poll");
-          clearInterval(statusInterval);
-        }
+        if (pollCount >= MAX_POLLS) clearInterval(statusInterval);
       } catch (err) {
-        console.error("Error polling room status:", err);
-        // Don't clear the interval, just keep trying
+        console.error("Error polling status:", err);
       }
     }, 3000);
-
     return () => clearInterval(statusInterval);
   }, [currentRoom?.id, refreshRoomStatus]);
 
-  // Function to leave the room with better error handling
   const handleLeaveRoom = async () => {
     if (!currentUser) return;
-
     setIsLeaving(true);
     setError("");
-
     try {
-      const { success, error } = await deletePlayer(currentUser.id);
-
+      const { success, error: deleteError } = await deletePlayer(
+        currentUser.id
+      );
       if (success) {
         resetState();
         router.push("/");
       } else {
-        console.error("Error leaving room:", error);
-        setError(error || "Failed to leave room");
+        setError(deleteError || "Ejection Failed. Manual exit required.");
         setIsLeaving(false);
       }
     } catch (err) {
-      console.error("Exception in handleLeaveRoom:", err);
-      setError("An unexpected error occurred");
+      setError("Unexpected Ejection Error.");
       setIsLeaving(false);
     }
   };
 
   const copyRoomCode = () => {
     if (!currentRoom) return;
-
     navigator.clipboard
       .writeText(currentRoom.room_code)
       .then(() => {
-        setCopySuccess(true);
-        setTimeout(() => setCopySuccess(false), 2000);
+        setCopySuccess("Code Copied!");
+        setTimeout(() => setCopySuccess(""), 2000);
       })
       .catch((err) => {
-        console.error("Failed to copy room code:", err);
+        setCopySuccess("Copy Failed!");
+        console.error("Failed to copy:", err);
       });
   };
 
-  // Reset state when navigating away - more robust approach
   useEffect(() => {
+    // Reset state on navigate away
     return () => {
-      // Get current pathname to check if we're going to game page
       const pathname = window.location.pathname;
-      if (!pathname.includes("/game")) {
-        console.log(
-          "Navigating away from lobby (not to game), resetting state"
-        );
-        resetState();
-      } else {
-        console.log("Navigating to game page, preserving state");
-      }
+      if (!pathname.includes("/game/")) resetState();
     };
   }, [resetState]);
 
-  // Loading state while data is being fetched
   if (!currentRoom || !currentUser) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 flex justify-center items-center p-4">
-        <BackgroundBeams className="opacity-20" />
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="bg-slate-900/80 backdrop-blur-sm border border-slate-800 rounded-lg shadow-xl p-8 relative z-10"
-        >
-          <div className="flex items-center justify-center mb-4">
-            <div className="h-8 w-8 rounded-full border-4 border-t-blue-500 border-r-transparent border-b-transparent border-l-transparent animate-spin mr-3"></div>
-            <h2 className="text-xl font-semibold text-white">
-              Loading Game Lobby...
-            </h2>
-          </div>
-          {error && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-red-400 text-center mt-2"
-            >
-              {error}
-            </motion.p>
-          )}
-        </motion.div>
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        {/* Single Vortex component for the loading state */}
+        <Vortex
+          backgroundColor="black"
+          className="fixed inset-0 w-full h-full z-0"
+          baseHue={260}
+          rangeY={200}
+        />
+        <BackgroundBeams className="opacity-10 z-0" />
+        <Meteors
+          number={20}
+          className="opacity-70 fixed inset-0 pointer-events-none z-[5]"
+        />
+        <CardContainer className="relative z-10">
+          <CardBody className="bg-slate-900/70 backdrop-blur-lg border border-slate-700 rounded-2xl p-8 shadow-2xl shadow-purple-500/30">
+            <GamifiedLoader
+              text={error ? "Error Encountered" : "Entering Lobby Matrix..."}
+            />
+            {error && (
+              <CardItem translateZ={20} className="w-full mt-4">
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-red-400 text-center p-3 bg-red-700/20 border border-red-500/50 rounded-lg"
+                >
+                  <AlertTriangle className="inline h-5 w-5 mr-2" /> {error}
+                </motion.p>
+              </CardItem>
+            )}
+          </CardBody>
+        </CardContainer>
       </div>
     );
   }
 
   const isHost = currentUser.id === currentRoom.host_id;
-  const minimumPlayers = 2; // Define minimum players needed
-
-  console.log("room status:", currentRoom.game_status);
+  const minimumPlayers = 2;
+  console.log("are u the host ", isHost);
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 p-4 overflow-hidden relative">
-      {/* Sound Settings Button - positioned in top-right corner */}
-      <div className="absolute top-4 right-4 z-20">
-        <SoundSettings />
-      </div>
-
-      <BackgroundBeams className="opacity-20" />
-      <AcernitySpotlight
-        className="-top-40 -left-20 md:left-60 md:-top-20"
+    <div className="min-h-screen bg-black p-4 md:p-6 lg:p-8 overflow-hidden relative">
+      <Vortex
+        backgroundColor="black"
+        className="fixed inset-0 w-full h-full z-0"
+        particleColors={["#3b82f6", "#8b5cf6", "#ec4899", "#10b981"]}
+        rangeY={200}
+        baseHue={260}
+      />
+      <BackgroundBeams className="opacity-10 z-0" />
+      <Meteors
+        number={25}
+        className="opacity-75 fixed inset-0 pointer-events-none z-[5]"
+      />
+      <Spotlight
+        className="-top-40 -left-20 md:left-60 md:-top-20 z-[1]"
         fill="blue"
       />
 
-      <div className="max-w-4xl mx-auto relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-        >
-          {/* Room Header */}
-          <CardContainer className="mb-6">
-            <CardBody className="bg-slate-900/80 backdrop-blur-sm border border-slate-800 rounded-xl p-6 shadow-xl">
-              <div className="flex flex-col items-center">
-                {/* Room Code Display */}
-                <motion.div className="relative" whileHover={{ scale: 1.02 }}>
-                  <div
-                    className="bg-gradient-to-r from-indigo-900 to-purple-900 p-4 px-6 rounded-xl mb-4 relative overflow-hidden group cursor-pointer"
-                    onClick={copyRoomCode}
-                  >
-                    <div className="absolute inset-0 bg-blue-500/10 transform rotate-45 translate-x-full group-hover:translate-x-0 transition-transform duration-300"></div>
-                    <div className="flex items-center justify-center">
-                      <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 to-purple-300 tracking-wider">
-                        {currentRoom.room_code}
-                      </h1>
-                      <Share2 className="ml-3 h-5 w-5 text-blue-400 opacity-70 group-hover:opacity-100" />
-                    </div>
-                    <div className="text-xs text-center text-blue-300 mt-1 opacity-80">
-                      Click to copy room code
-                    </div>
+      <div className="absolute top-6 right-6 z-50">
+        <CardContainer className="w-auto h-auto">
+          <CardItem
+            translateZ={50}
+            rotateX={-15}
+            rotateZ={10}
+            className="p-1 bg-slate-800/60 backdrop-blur-lg border border-slate-700 rounded-lg hover:shadow-2xl hover:shadow-cyan-500/50"
+          >
+            <SoundSettings />
+          </CardItem>
+        </CardContainer>
+      </div>
 
+      {/* Main content - Now organized in a top-to-bottom structure with two columns */}
+      <div className="max-w-7xl mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-[calc(100vh-4rem)]">
+        {/* Left Column - For room info and host controls */}
+        <div className="flex flex-col space-y-6">
+          <CardContainer perspective={1200}>
+            <CardBody className="bg-slate-900/75 backdrop-blur-xl border border-slate-700/80 rounded-3xl p-8 md:p-10 shadow-2xl shadow-purple-600/40 group/card">
+              <div className="absolute inset-0 rounded-3xl border-2 border-transparent group-hover/card:border-purple-500/70 transition-all duration-500 pointer-events-none animate-pulse-border" />
+
+              <div className="flex flex-col items-center space-y-6">
+                <CardItem translateZ={80} className="w-full text-center">
+                  <TextGenerateEffect
+                    words="LOBBY AUREOLE"
+                    className="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-br from-cyan-400 via-purple-500 to-pink-500 pb-2"
+                  />
+                  <p className="text-md text-slate-400 mt-2">
+                    Prepare for assignment, Operative{" "}
+                    <span className="text-cyan-300 font-semibold">
+                      {currentUser.nickname}
+                    </span>
+                    !
+                  </p>
+                </CardItem>
+
+                <CardItem translateZ={60} className="w-full max-w-lg">
+                  <HoverBorderGradient
+                    containerClassName="rounded-xl w-full"
+                    as="div"
+                    className="bg-slate-800/50 p-6 rounded-xl cursor-pointer relative overflow-hidden"
+                    onClick={() => {
+                      copyRoomCode();
+                      playClickSound();
+                    }}
+                  >
+                    <div className="flex items-center justify-center space-x-4">
+                      <Share2 className="h-7 w-7 text-blue-400 group-hover:text-cyan-300 transition-colors" />
+                      <TextGenerateEffect
+                        words={currentRoom.room_code}
+                        duration={0.3}
+                        className="text-5xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-cyan-300 to-purple-300 tracking-widest mono-font-display"
+                      />
+                    </div>
+                    <p className="text-sm text-center text-slate-400 mt-4 group-hover:text-cyan-300 transition-colors">
+                      {copySuccess
+                        ? copySuccess
+                        : "Tap Code to Copy & Share Mission Intel"}
+                    </p>
                     <AnimatePresence>
-                      {copySuccess && (
+                      {copySuccess === "Code Copied!" && (
                         <motion.div
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0 }}
-                          className="absolute bottom-0 left-0 right-0 bg-green-500/20 text-green-300 text-center text-xs py-1"
+                          key={copySuccess}
+                          initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.8, y: 10 }}
+                          className="absolute inset-x-0 -bottom-8 mx-auto w-max px-4 py-2 bg-green-500/80 backdrop-blur-sm text-white text-sm rounded-md shadow-lg"
                         >
-                          Copied to clipboard!
+                          Transmission Copied!
                         </motion.div>
                       )}
                     </AnimatePresence>
-                  </div>
-                </motion.div>
+                  </HoverBorderGradient>
+                </CardItem>
 
-                {/* Game Settings */}
-                <div className="flex flex-wrap justify-center gap-4 mb-6">
-                  <motion.div
-                    whileHover={{ y: -2 }}
-                    className="bg-slate-800/60 backdrop-blur-sm p-3 px-4 rounded-lg flex items-center"
-                  >
-                    <Clock className="h-5 w-5 text-cyan-400 mr-2" />
-                    <span className="text-slate-300">
-                      {currentRoom.time_limit}s per turn
-                    </span>
-                  </motion.div>
-
-                  <motion.div
-                    whileHover={{ y: -2 }}
-                    className="bg-slate-800/60 backdrop-blur-sm p-3 px-4 rounded-lg flex items-center"
-                  >
-                    <Users className="h-5 w-5 text-purple-400 mr-2" />
-                    <span className="text-slate-300">
-                      {currentRoom.total_rounds} rounds
-                    </span>
-                  </motion.div>
+                <div className="flex flex-wrap justify-center gap-5 w-full">
+                  {[
+                    {
+                      icon: Clock,
+                      label: `${currentRoom.time_limit}s / Turn`,
+                      valueKey: "time",
+                      color: "text-cyan-400",
+                    },
+                    {
+                      icon: Users,
+                      label: `${currentRoom.total_rounds} Rounds`,
+                      valueKey: "rounds",
+                      color: "text-purple-400",
+                    },
+                  ].map((item) => (
+                    <CardItem
+                      key={item.valueKey}
+                      translateZ={40}
+                      whileHover={{ y: -3, scale: 1.05 }}
+                      className="bg-slate-800/70 backdrop-blur-sm p-4 px-6 rounded-xl flex items-center space-x-3 border border-slate-700 shadow-md"
+                    >
+                      <item.icon className={`h-6 w-6 ${item.color}`} />
+                      <span className="text-slate-200 text-base font-medium">
+                        {item.label}
+                      </span>
+                    </CardItem>
+                  ))}
                 </div>
+              </div>
 
-                <p className="text-xs text-slate-400 italic mb-5">
-                  Each round consists of every player getting a turn as the
-                  decider
-                </p>
-
-                {/* Subscription status indicator for debugging - can be removed in production */}
-                {process.env.NODE_ENV === "development" && (
-                  <div className="text-xs text-gray-500 text-center mb-2">
-                    Connection status:{" "}
-                    <span
-                      className={
-                        subscriptionsActive ? "text-green-400" : "text-red-400"
-                      }
+              {/* Game Controls Section - PROMINENTLY POSITIONED */}
+              {isHost && (
+                <div className="mt-12 pt-8 border-t border-slate-700/50">
+                  <CardItem translateZ={100} className="w-full">
+                    <div
+                      className={`w-full ${
+                        roomPlayers.length >= minimumPlayers
+                          ? "bg-emerald-900/80 border-emerald-700/50 hover:border-emerald-600"
+                          : "bg-gray-700/80 border-gray-600/50"
+                      } text-white border-2 rounded-xl relative overflow-hidden shadow-lg`}
                     >
-                      {subscriptionsActive ? "Active ✓" : "Inactive ✗"}
-                    </span>
-                  </div>
-                )}
+                      <div
+                        className={`absolute inset-0 ${
+                          roomPlayers.length >= minimumPlayers
+                            ? "bg-[radial-gradient(var(--emerald-400)_40%,transparent_60%)]"
+                            : "bg-[radial-gradient(var(--gray-500)_40%,transparent_60%)]"
+                        }`}
+                      ></div>
+                      <motion.button
+                        className={`color-w h-full w-full z-10 relative flex items-center justify-center px-8 py-5 ${
+                          roomPlayers.length >= minimumPlayers
+                            ? "bg-emerald-600/50 hover:bg-emerald-500/70"
+                            : "bg-gray-600/50 cursor-not-allowed"
+                        } rounded-lg transition-all`}
+                        whileHover={
+                          roomPlayers.length >= minimumPlayers
+                            ? { letterSpacing: "0.05em", scale: 1.02 }
+                            : {}
+                        }
+                        whileTap={
+                          roomPlayers.length >= minimumPlayers
+                            ? { scale: 0.98 }
+                            : {}
+                        }
+                        onClick={() => {
+                          if (roomPlayers.length >= minimumPlayers) {
+                            handleStartGame();
+                            playClickSound();
+                          }
+                        }}
+                        disabled={
+                          isStarting || roomPlayers.length < minimumPlayers
+                        }
+                        title={
+                          roomPlayers.length < minimumPlayers
+                            ? `Need at least ${minimumPlayers} players to start`
+                            : ""
+                        }
+                      >
+                        <PlayCircle className="h-8 w-8 mr-3" />
+                        <span className="text-xl font-semibold">
+                          {isStarting
+                            ? "Initializing Mission..."
+                            : roomPlayers.length < minimumPlayers
+                              ? `Need ${minimumPlayers - roomPlayers.length} more player(s)`
+                              : "LAUNCH MISSION"}
+                        </span>
+                      </motion.button>
+                    </div>
+                  </CardItem>
 
-                {/* Action Buttons */}
-                <div className="flex justify-center gap-4">
-                  <motion.button
-                    whileHover={{ scale: 1.03 }}
-                    whileTap={{ scale: 0.97 }}
-                    onClick={handleLeaveRoom}
-                    disabled={isLeaving}
-                    className="bg-red-500/80 hover:bg-red-600 text-white px-6 py-2 rounded-lg flex items-center font-medium disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    <LogOut className="h-4 w-4 mr-2" />
-                    {isLeaving ? "Leaving..." : "Leave Room"}
-                  </motion.button>
-
-                  {isHost && (
-                    <motion.button
-                      whileHover={{ scale: 1.03 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={handleStartGame}
-                      disabled={
-                        isStarting || roomPlayers.length < minimumPlayers
-                      }
-                      className="bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-6 py-2 rounded-lg flex items-center font-medium disabled:opacity-60 disabled:cursor-not-allowed"
-                    >
-                      <PlayCircle className="h-4 w-4 mr-2" />
-                      {isStarting ? "Starting..." : "Start Game"}
-                    </motion.button>
+                  {roomPlayers.length < minimumPlayers && (
+                    <CardItem translateZ={20} className="w-full mt-4">
+                      <motion.p
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="text-center text-yellow-400 bg-yellow-900/30 px-6 py-3 rounded-lg border border-yellow-700/50 shadow-md"
+                      >
+                        <AlertTriangle className="inline h-5 w-5 mr-2" />
+                        Awaiting Reinforcements:{" "}
+                        {minimumPlayers - roomPlayers.length} more Operative(s)
+                        needed.
+                      </motion.p>
+                    </CardItem>
                   )}
                 </div>
-
-                {isHost && roomPlayers.length < minimumPlayers && (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-center mt-4 text-red-400 bg-red-900/20 px-3 py-1 rounded"
-                  >
-                    Need at least {minimumPlayers} players to start
-                  </motion.p>
-                )}
-
-                {error && (
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    className="text-center mt-4 text-red-400 bg-red-900/20 px-3 py-1 rounded"
-                  >
-                    {error}
-                  </motion.p>
-                )}
-              </div>
-            </CardBody>
-          </CardContainer>
-
-          {/* Players List */}
-          <CardContainer className="mb-6">
-            <CardBody className="bg-slate-900/80 backdrop-blur-sm border border-slate-800 rounded-xl p-6 shadow-xl">
-              <h2 className="text-xl font-semibold mb-4 text-white flex items-center">
-                <Users className="h-5 w-5 mr-2 text-blue-400" />
-                Players ({roomPlayers.length})
-              </h2>
-
-              {roomPlayers.length === 0 && (
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-slate-400 text-center py-8"
-                >
-                  No players have joined yet
-                </motion.p>
               )}
-
-              <div className="space-y-2">
-                <AnimatePresence>
-                  {roomPlayers.map((player, index) => (
-                    <motion.div
-                      key={player.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      transition={{ delay: index * 0.1 }}
-                      className={`flex items-center justify-between p-3 rounded-lg ${
-                        player.id === currentUser.id
-                          ? "bg-blue-900/30 border border-blue-700/50"
-                          : "bg-slate-800/50"
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 rounded-full flex items-center justify-center bg-gradient-to-br from-blue-600 to-purple-700 text-white font-bold">
-                          {player.nickname.charAt(0).toUpperCase()}
-                        </div>
-                        <span className="font-medium text-white">
-                          {player.nickname}
-                        </span>
-                        {player.id === currentRoom.host_id && (
-                          <div className="flex items-center bg-amber-900/30 text-amber-300 px-2 py-1 text-xs rounded border border-amber-700/30">
-                            <Crown className="h-3 w-3 mr-1" />
-                            Host
-                          </div>
-                        )}
-                      </div>
-
-                      {player.id === currentUser.id && (
-                        <span className="text-blue-300 text-sm bg-blue-900/30 px-2 py-1 rounded">
-                          You
-                        </span>
-                      )}
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-              </div>
             </CardBody>
           </CardContainer>
 
-          {/* Room info and help section */}
-          <CardContainer className="mb-6">
-            <CardBody className="bg-slate-900/80 backdrop-blur-sm border border-slate-800 rounded-xl p-6 shadow-xl overflow-hidden">
-              <div
-                className="flex items-center justify-between cursor-pointer"
-                onClick={() => setShowHelp(!showHelp)}
+          {/* Exit Game Button */}
+          <div className="flex justify-center mt-4">
+            <CardItem translateZ={50} className="w-full max-w-md">
+              <div className="w-full bg-red-900/80 text-white border border-red-700/50 hover:border-red-600 rounded-[0.75rem] relative overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(var(--red-500)_40%,transparent_60%)]"></div>
+                <motion.button
+                  className="h-full w-full z-10 relative flex items-center justify-center px-8 py-3.5 bg-red-600/50 hover:bg-red-500/70 rounded-[0.6rem] transition-all"
+                  whileHover={{ letterSpacing: "0.05em", scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    handleLeaveRoom();
+                    playClickSound();
+                  }}
+                  disabled={isLeaving}
+                >
+                  <LogOut className="h-6 w-6 mr-3" />
+                  <span className="text-lg">
+                    {isLeaving ? "Exiting..." : "Exit Mission"}
+                  </span>
+                </motion.button>
+              </div>
+            </CardItem>
+          </div>
+
+          {/* Error Display */}
+          {error && (
+            <CardItem translateZ={20} className="w-full max-w-lg mx-auto mt-4">
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="text-center text-red-300 bg-red-900/40 px-6 py-3 rounded-lg border border-red-700/60 shadow-md"
               >
-                <h3 className="text-lg font-medium text-white">How to Play</h3>
+                <AlertTriangle className="inline h-5 w-5 mr-2" /> {error}
+              </motion.p>
+            </CardItem>
+          )}
+        </div>
+
+        {/* Right Column - For players list and mission briefing */}
+        <div className="flex flex-col space-y-6">
+          {/* Players List */}
+          <CardContainer perspective={1000} className="h-full">
+            <CardBody className="bg-slate-900/70 backdrop-blur-lg border border-slate-700/70 rounded-2xl p-6 md:p-8 shadow-xl shadow-blue-500/30 group/card flex flex-col">
+              <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover/card:border-blue-500/60 transition-all duration-500 pointer-events-none animate-pulse-border-blue" />
+
+              <CardItem
+                translateZ={50}
+                as="h2"
+                className="text-2xl md:text-3xl font-semibold mb-6 text-white flex items-center"
+              >
+                <Users className="h-7 w-7 mr-4 text-blue-400" />
+                Operatives Deployed ({roomPlayers.length})
+              </CardItem>
+
+              <div className="flex-1 overflow-y-auto min-h-[200px] max-h-[400px] pr-2">
+                {roomPlayers.length === 0 ? (
+                  <CardItem translateZ={20} className="w-full">
+                    <motion.p
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="text-slate-400 text-center py-16 text-xl italic"
+                    >
+                      No operatives detected in this sector. Awaiting
+                      arrivals...
+                    </motion.p>
+                  </CardItem>
+                ) : (
+                  <div className="space-y-3">
+                    <AnimatePresence>
+                      {roomPlayers.map((player, index) => (
+                        <CardItem
+                          key={player.id}
+                          translateZ={30 + index * 2} // Staggered 3D effect
+                          as={motion.div}
+                          initial={{ opacity: 0, x: -30, scale: 0.95 }}
+                          animate={{ opacity: 1, x: 0, scale: 1 }}
+                          exit={{ opacity: 0, x: 30, scale: 0.95 }}
+                          transition={{
+                            delay: index * 0.08,
+                            type: "spring",
+                            stiffness: 100,
+                            damping: 15,
+                          }}
+                          className={`flex items-center justify-between p-4 rounded-xl shadow-md transition-all duration-300 hover:shadow-lg hover:scale-[1.015] ${
+                            player.id === currentUser.id
+                              ? "bg-blue-700/40 border border-blue-500/70 ring-2 ring-blue-400/50"
+                              : "bg-slate-800/60 border border-slate-700/50 hover:border-slate-600"
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <CardItem
+                              translateZ={10}
+                              className="h-10 w-10 rounded-full flex items-center justify-center bg-gradient-to-br from-slate-600 to-slate-700 text-white font-bold text-lg shadow-inner"
+                              onClick={() => {}}
+                              whileHover={{}}
+                            >
+                              {player.nickname.charAt(0).toUpperCase()}
+                            </CardItem>
+                            <CardItem
+                              translateZ={5}
+                              as="span"
+                              className="font-medium text-slate-100 text-lg"
+                              onClick={() => {}}
+                              whileHover={{}}
+                            >
+                              {player.nickname}
+                            </CardItem>
+                            {player.id === currentRoom.host_id && (
+                              <CardItem
+                                translateZ={15}
+                                className="flex items-center bg-amber-600/30 text-amber-300 px-2.5 py-1 text-xs rounded-md border border-amber-500/40 shadow-sm"
+                                onClick={() => {}}
+                                whileHover={{}}
+                              >
+                                <Crown className="h-3.5 w-3.5 mr-1.5" />
+                                Sector Commander
+                              </CardItem>
+                            )}
+                          </div>
+                          {player.id === currentUser.id && (
+                            <CardItem
+                              translateZ={10}
+                              as="span"
+                              className="text-blue-300 text-sm bg-blue-800/40 px-3 py-1 rounded-md border border-blue-600/50"
+                              onClick={() => {}}
+                              whileHover={{}}
+                            >
+                              You
+                            </CardItem>
+                          )}
+                        </CardItem>
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                )}
+              </div>
+
+              <CardItem
+                translateZ={20}
+                className="text-sm text-slate-400 italic text-center max-w-xl mt-6 mx-auto"
+              >
+                Each round, one Operative becomes the Decider. Wisdom and wit
+                are your weapons.
+              </CardItem>
+
+              {process.env.NODE_ENV === "development" && (
+                <CardItem
+                  translateZ={10}
+                  className="text-xs text-gray-600 text-center mt-4"
+                >
+                  Matrix Sync:{" "}
+                  <span
+                    className={
+                      subscriptionsActive ? "text-green-500" : "text-red-500"
+                    }
+                  >
+                    {subscriptionsActive ? "Online" : "Offline"}
+                  </span>
+                </CardItem>
+              )}
+            </CardBody>
+          </CardContainer>
+
+          {/* Mission Briefing Card */}
+          <CardContainer perspective={1000}>
+            <CardBody className="bg-slate-900/70 backdrop-blur-lg border border-slate-700/70 rounded-2xl p-6 md:p-8 shadow-xl shadow-teal-500/30 group/card overflow-hidden">
+              <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover/card:border-teal-500/60 transition-all duration-500 pointer-events-none animate-pulse-border-teal" />
+              <CardItem
+                translateZ={40}
+                className="flex items-center justify-between cursor-pointer"
+                onClick={() => {
+                  setShowHelp(!showHelp);
+                  playClickSound();
+                }}
+              >
+                <h3 className="text-xl font-semibold text-white flex items-center">
+                  <Info className="h-5 w-5 mr-2.5 text-teal-400" />
+                  Mission Briefing
+                </h3>
                 <motion.div
                   animate={{ rotate: showHelp ? 180 : 0 }}
                   transition={{ duration: 0.3 }}
                 >
-                  <ChevronDown className="h-5 w-5 text-blue-400" />
+                  <ChevronDown className="h-6 w-6 text-teal-400" />
                 </motion.div>
-              </div>
-
+              </CardItem>
               <AnimatePresence>
                 {showHelp && (
                   <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
+                    initial={{ height: 0, opacity: 0, marginTop: 0 }}
+                    animate={{
+                      height: "auto",
+                      opacity: 1,
+                      marginTop: "1.5rem",
+                    }} // `mt-6`
+                    exit={{ height: 0, opacity: 0, marginTop: 0 }}
+                    transition={{ duration: 0.4, ease: "easeInOut" }}
                     className="overflow-hidden"
                   >
-                    <div className="pt-4 space-y-3">
-                      <p className="text-sm text-slate-300">
-                        Share the room code with friends to have them join your
-                        game. Once everyone is here, the host can start the
-                        game.
+                    <CardItem
+                      translateZ={20}
+                      className="space-y-4 text-sm text-slate-300 leading-relaxed"
+                    >
+                      <p>
+                        Welcome, Operative. Your mission, should you choose to
+                        accept it:
                       </p>
-                      <p className="text-sm text-slate-300">
-                        In each round, players take turns being the "decider"
-                        who chooses the winning submission from the other
-                        players.
-                      </p>
-                      <div className="text-sm text-blue-300 bg-blue-900/20 p-3 rounded-lg border border-blue-800/30 mt-2">
-                        Click on the room code to copy it to your clipboard for
-                        easy sharing!
+                      <ul className="list-disc list-inside space-y-2 pl-2">
+                        <li>
+                          Transmit the{" "}
+                          <strong className="text-cyan-300">Room Code</strong>{" "}
+                          to your fellow agents.
+                        </li>
+                        <li>
+                          Once all operatives are assembled, the{" "}
+                          <strong className="text-amber-300">
+                            Sector Commander (Host)
+                          </strong>{" "}
+                          initiates the mission.
+                        </li>
+                        <li>
+                          In each phase (round), operatives will take turns as
+                          the{" "}
+                          <strong className="text-purple-300">Decider</strong>.
+                        </li>
+                        <li>
+                          The Decider evaluates submissions from other
+                          operatives and selects the most ingenious one.
+                        </li>
+                        <li>
+                          Victory requires cunning, creativity, and a dash of
+                          audacity. Good luck.
+                        </li>
+                      </ul>
+                      <div className="text-sm text-teal-300 bg-teal-900/30 p-3.5 rounded-lg border border-teal-700/40 mt-3">
+                        <Info className="inline h-4 w-4 mr-1.5" />
+                        Tip: Tap the Room Code above for instant clipboard
+                        acquisition. Stay frosty.
                       </div>
-                    </div>
+                    </CardItem>
                   </motion.div>
                 )}
               </AnimatePresence>
             </CardBody>
           </CardContainer>
-        </motion.div>
+        </div>
       </div>
+
+      {/* Styling for animated borders and custom fonts if needed */}
+      <style jsx global>{`
+        .animate-pulse-border {
+          /* For purple cards */
+          animation: pulse-border-purple 4s infinite ease-in-out;
+        }
+        @keyframes pulse-border-purple {
+          0%,
+          100% {
+            border-color: rgba(168, 85, 247, 0.2);
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.1);
+          }
+          50% {
+            border-color: rgba(168, 85, 247, 0.6);
+            box-shadow: 0 0 25px rgba(168, 85, 247, 0.25);
+          }
+        }
+        .group-hover\\/card:hover .animate-pulse-border {
+          animation-duration: 2s;
+        }
+
+        .animate-pulse-border-blue {
+          /* For blue cards */
+          animation: pulse-border-blue 4.2s infinite ease-in-out;
+        }
+        @keyframes pulse-border-blue {
+          0%,
+          100% {
+            border-color: rgba(59, 130, 246, 0.2);
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.1);
+          }
+          50% {
+            border-color: rgba(59, 130, 246, 0.6);
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.25);
+          }
+        }
+        .group-hover\\/card:hover .animate-pulse-border-blue {
+          animation-duration: 2.1s;
+        }
+
+        .animate-pulse-border-teal {
+          /* For teal cards */
+          animation: pulse-border-teal 4.4s infinite ease-in-out;
+        }
+        @keyframes pulse-border-teal {
+          0%,
+          100% {
+            border-color: rgba(20, 184, 166, 0.2);
+            box-shadow: 0 0 10px rgba(20, 184, 166, 0.1);
+          }
+          50% {
+            border-color: rgba(20, 184, 166, 0.6);
+            box-shadow: 0 0 25px rgba(20, 184, 166, 0.25);
+          }
+        }
+        .group-hover\\/card:hover .animate-pulse-border-teal {
+          animation-duration: 2.2s;
+        }
+
+        /* Example for a more distinct mono font for Room Code if needed */
+        /* @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400..900&display=swap'); */
+        .mono-font-display {
+          /* font-family: 'Orbitron', sans-serif; */ /* Or any other cool mono/display font */
+        }
+      `}</style>
     </div>
   );
 }

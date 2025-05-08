@@ -3,10 +3,10 @@ import { useRouter } from "next/navigation";
 import { Trophy, User, Share2, Home } from "lucide-react";
 import { Player } from "@/types/types";
 import { motion } from "framer-motion";
-import { Sparkles } from "@/components/ui/acernity/Sparkles";
-import { GlowingText } from "@/components/ui/acernity/glowing-text";
-import { AcernityCard } from "@/components/ui/acernity/card";
-import { GradientButton } from "@/components/ui/acernity/gradient-button";
+import Sparkles from "@/components/ui/Sparkles";
+import { GlowingText } from "@/components/ui/glowing-text";
+import { Card } from "@/components/ui/card";
+import { GradientButton } from "@/components/ui/gradient-button";
 import { resetAllStores } from "@/store/store-util";
 
 interface GameCompletedProps {
@@ -89,7 +89,7 @@ export function GameCompleted({ players }: GameCompletedProps) {
 
       {/* Winner section */}
       <motion.div variants={item}>
-        <AcernityCard className="p-6 mb-8 text-center border-yellow-400/30">
+        <Card className="p-6 mb-8 text-center border-yellow-400/30">
           <div className="flex justify-center mb-4">
             <motion.div
               className="bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full p-4"
@@ -105,12 +105,12 @@ export function GameCompleted({ players }: GameCompletedProps) {
           <p className="text-amber-400 font-semibold text-lg">
             {winner.total_points} points
           </p>
-        </AcernityCard>
+        </Card>
       </motion.div>
 
       {/* Players ranking */}
       <motion.div variants={item}>
-        <AcernityCard className="mb-8 border-purple-500/20">
+        <Card className="mb-8 border-purple-500/20">
           <div className="p-4 border-b border-purple-500/10">
             <h3 className="font-semibold text-lg text-white">Final Rankings</h3>
           </div>
@@ -145,7 +145,7 @@ export function GameCompleted({ players }: GameCompletedProps) {
               </motion.div>
             ))}
           </div>
-        </AcernityCard>
+        </Card>
       </motion.div>
 
       {/* Action buttons */}

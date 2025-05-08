@@ -3,10 +3,12 @@ import { Player, Scenario } from "@/types/types";
 import { useGameStore } from "@/store/game-store";
 import { useUserRoomStore } from "@/store/user-room-store";
 import { motion, AnimatePresence } from "framer-motion";
-import { AcernityCard } from "@/components/ui/acernity/card";
-import { GradientButton } from "@/components/ui/acernity/gradient-button";
-import { Sparkles } from "@/components/ui/acernity/Sparkles";
-import { GlowingText } from "@/components/ui/acernity/glowing-text";
+
+import { GradientButton } from "@/components/ui/gradient-button";
+import Sparkles from "@/components/ui/Sparkles";
+import { GlowingText } from "@/components/ui/glowing-text";
+import { Brain } from "lucide-react";
+import { Card } from "./ui/card";
 
 interface AnswerSubmissionProps {
   turnId: string;
@@ -35,6 +37,7 @@ export function AnswerSubmission({
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isProcessingNextPhase, setIsProcessingNextPhase] = useState(false);
+  const [showAIProcessing, setShowAIProcessing] = useState(false);
 
   // Check if this player has already submitted an answer
   useEffect(() => {
@@ -89,6 +92,7 @@ export function AnswerSubmission({
 
       if ((allPlayersSubmitted || isTimerExpired) && !isProcessingNextPhase) {
         setIsProcessingNextPhase(true);
+        setShowAIProcessing(true);
         console.log(
           "All players submitted or timer expired, progressing game..."
         );
@@ -148,6 +152,85 @@ export function AnswerSubmission({
     }
   };
 
+  // If we're showing the AI processing screen
+  if (showAIProcessing) {
+    return (
+      <div className="fixed inset-0 flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-md z-50">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ duration: 0.5 }}
+          className="text-center p-8"
+        >
+          <motion.div
+            className="mx-auto mb-6 relative"
+            animate={{
+              rotate: 360,
+              scale: [1, 1.1, 1],
+            }}
+            transition={{
+              rotate: { duration: 5, repeat: Infinity, ease: "linear" },
+              scale: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+            }}
+          >
+            <div className="w-20 h-20 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
+              <Brain className="w-10 h-10 text-white" />
+            </div>
+            <div className="absolute -inset-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full blur opacity-40"></div>
+          </motion.div>
+
+          <Sparkles>
+            <GlowingText className="text-2xl font-bold mb-4">
+              AI is Processing Answers
+            </GlowingText>
+          </Sparkles>
+
+          <p className="text-purple-200 mb-8 max-w-md">
+            Our AI is analyzing all submissions for creativity and humor. Get
+            ready for the voting phase!
+          </p>
+
+          <motion.div
+            className="flex space-x-2 justify-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            <motion.div
+              className="w-3 h-3 bg-purple-500 rounded-full"
+              animate={{ y: [-5, 0, -5] }}
+              transition={{
+                duration: 0.6,
+                repeat: Infinity,
+                repeatType: "reverse",
+              }}
+            />
+            <motion.div
+              className="w-3 h-3 bg-blue-500 rounded-full"
+              animate={{ y: [-5, 0, -5] }}
+              transition={{
+                duration: 0.6,
+                delay: 0.2,
+                repeat: Infinity,
+                repeatType: "reverse",
+              }}
+            />
+            <motion.div
+              className="w-3 h-3 bg-indigo-500 rounded-full"
+              animate={{ y: [-5, 0, -5] }}
+              transition={{
+                duration: 0.6,
+                delay: 0.4,
+                repeat: Infinity,
+                repeatType: "reverse",
+              }}
+            />
+          </motion.div>
+        </motion.div>
+      </div>
+    );
+  }
+
   // If there's no scenario yet, show a waiting state
   if (!scenario) {
     return (
@@ -161,7 +244,7 @@ export function AnswerSubmission({
         </motion.div>
 
         {currentDecider && (
-          <AcernityCard className="mb-6 backdrop-blur-md border-purple-300/20 max-w-md">
+          <Card className="mb-6 backdrop-blur-md border-purple-300/20 max-w-md">
             <div className="p-6 text-center">
               <motion.p
                 initial={{ opacity: 0 }}
@@ -184,7 +267,7 @@ export function AnswerSubmission({
                 round...
               </motion.p>
             </div>
-          </AcernityCard>
+          </Card>
         )}
 
         {!currentDecider && (
@@ -208,7 +291,7 @@ export function AnswerSubmission({
         </Sparkles>
 
         {/* Enhanced Scenario Card */}
-        <AcernityCard className="mb-8 backdrop-blur-md border-purple-400/30 shadow-lg shadow-purple-500/20">
+        <Card className="mb-8 backdrop-blur-md border-purple-400/30 shadow-lg shadow-purple-500/20">
           <div className="relative overflow-hidden">
             {/* Animated gradient background */}
             <div className="absolute inset-0 bg-gradient-to-br from-purple-900/50 to-blue-900/50 animate-gradient-slow" />
@@ -264,7 +347,7 @@ export function AnswerSubmission({
               )}
             </div>
           </div>
-        </AcernityCard>
+        </Card>
 
         <AnimatePresence>
           {error && (

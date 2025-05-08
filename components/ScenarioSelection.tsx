@@ -4,11 +4,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Player, Scenario } from "@/types/types";
 import { useGameStore } from "@/store/game-store";
 import { useUserRoomStore } from "@/store/user-room-store";
-import { Sparkles } from "@/components/ui/acernity/Sparkles";
-import { GlowingText } from "@/components/ui/acernity/glowing-text";
-import { AcernityCard } from "@/components/ui/acernity/card";
-import { GradientButton } from "@/components/ui/acernity/gradient-button";
-import AcernitySpotlight from "@/components/ui/acernity/spotlight";
+import Sparkles from "@/components/ui/Sparkles";
+import { GlowingText } from "@/components/ui/glowing-text";
+import { Card } from "@/components/ui/card";
+import { GradientButton } from "@/components/ui/gradient-button";
 
 interface ScenarioSelectionProps {
   turnId: string;
@@ -128,7 +127,7 @@ export function ScenarioSelection({
           </GlowingText>
         </Sparkles>
 
-        <AcernityCard className="border-purple-500/20 p-8 text-center max-w-lg w-full">
+        <Card className="border-purple-500/20 p-8 text-center max-w-lg w-full">
           <div className="flex flex-col items-center">
             <div className="w-16 h-16 border-4 border-t-purple-500 border-purple-300/30 rounded-full animate-spin mb-6" />
 
@@ -144,7 +143,7 @@ export function ScenarioSelection({
               chooses a scenario
             </p>
           </div>
-        </AcernityCard>
+        </Card>
       </div>
     );
   }
@@ -183,7 +182,7 @@ export function ScenarioSelection({
         >
           {isDecider ? (
             <div className="w-full">
-              <AcernityCard className="mb-6 border-purple-500/20">
+              <Card className="mb-6 border-purple-500/20">
                 <div className="mb-4">
                   <label className="block text-sm font-semibold text-purple-100 mb-2">
                     Additional Context (Optional)
@@ -243,9 +242,9 @@ export function ScenarioSelection({
                     "Generate Scenarios"
                   )}
                 </GradientButton>
-              </AcernityCard>
+              </Card>
 
-              <AcernityCard className="border-purple-500/20 mb-8">
+              <Card className="border-purple-500/20 mb-8">
                 <div>
                   <label className="block text-sm font-semibold text-purple-100 mb-2">
                     Custom Scenario
@@ -274,12 +273,12 @@ export function ScenarioSelection({
                     )}
                   </GradientButton>
                 </div>
-              </AcernityCard>
+              </Card>
             </div>
           ) : (
             currentScenario && (
               <div className="w-full">
-                <AcernityCard className="border-purple-400/20 p-6 bg-slate-800/80">
+                <Card className="border-purple-400/20 p-6 bg-slate-800/80">
                   <div className="text-center mb-4">
                     <div className="inline-flex items-center px-4 py-2 bg-purple-900/40 rounded-full border border-purple-500/40 mb-4">
                       <span className="text-purple-200 text-sm font-medium">
@@ -307,7 +306,7 @@ export function ScenarioSelection({
                       </p>
                     </div>
                   )}
-                </AcernityCard>
+                </Card>
               </div>
             )
           )}

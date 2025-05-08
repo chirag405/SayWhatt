@@ -3,23 +3,34 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUserRoomStore } from "@/store/user-room-store";
 import { motion, AnimatePresence } from "framer-motion";
-import BackgroundBeams from "@/components/ui/acernity/background-beams";
-import Spotlight from "@/components/ui/acernity/spotlight";
-import GamingIllustration from "@/components/ui/acernity/gaming-illustration";
-import {
-  CardContainer,
-  CardBody,
-  CardItem,
-} from "@/components/ui/acernity/ThreeDCard";
-import Meteors from "@/components/ui/acernity/meteors";
+
+// Aceternity UI Components
+
+import { Sparkles as SparklesCore } from "@/components/ui/Sparkles";
+import { Spotlight } from "@/components/ui/spotlight";
+import { Meteors } from "@/components/ui/meteors";
+import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
+import { CardContainer, CardBody, CardItem } from "@/components/ui/3d-card";
+import { Vortex } from "@/components/ui/vortex";
+import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
+
+// Custom Components
 import GameStatistics from "@/components/GameStats";
 import { SoundSettings } from "@/components/SoundSettings";
+
+// Sound Utilities
 import {
   playSound,
   preloadSounds,
   stopSound,
+  stopAllSounds,
   SOUND_PATHS,
+  checkAndStartLobbyMusic,
 } from "@/utils/soundUtils";
+
+// Icons
+import { Gamepad2, Users, Clock, ArrowRight } from "lucide-react";
+import BackgroundBeams from "@/components/ui/background-beams";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -40,14 +51,24 @@ export default function HomeScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isFormVisible, setIsFormVisible] = useState(false);
 
+  // Play sound effect on button click
+  const playClickSound = () => {
+    playSound(SOUND_PATHS.categorySelect, "category");
+  };
+
   useEffect(() => {
     resetState();
 
     // Preload sounds when the component mounts
     preloadSounds();
 
-    // Stop any previous lobby music that might be playing
-    stopSound(SOUND_PATHS.lobby);
+    // Stop any previous sounds that might be playing
+    stopAllSounds();
+
+    // Start the home screen background music immediately
+    console.log("Starting home screen lobby music");
+    // Use checkAndStartLobbyMusic() which properly handles the lobby music
+    checkAndStartLobbyMusic();
 
     // Delay showing the form for a better entrance animation
     setTimeout(() => {
@@ -55,21 +76,22 @@ export default function HomeScreen() {
     }, 800);
 
     return () => {
-      // We don't stop sounds when leaving the home page
-      // This allows lobby music to continue playing when transitioning to the lobby
+      // Don't stop lobby music when navigating to lobby page
+      // It will continue playing and be managed by the lobby component
     };
-  }, []);
+  }, [resetState]);
 
   useEffect(() => {
     if (currentRoom) {
       router.push(`/lobby/${currentRoom.id}`);
     }
-  }, [currentRoom]);
+  }, [currentRoom, router]);
 
-  const handleCreateRoom = async (e: any) => {
+  const handleCreateRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
+    playClickSound();
 
     if (!nickname.trim()) {
       setError("Please enter a nickname");
@@ -89,10 +111,11 @@ export default function HomeScreen() {
     setIsLoading(false);
   };
 
-  const handleJoinRoom = async (e: any) => {
+  const handleJoinRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
+    playClickSound();
 
     if (!roomCode.trim() || !joinNickname.trim()) {
       setError("Please fill in all fields");
@@ -149,19 +172,60 @@ export default function HomeScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-indigo-900 to-blue-900 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Sound Settings Button - positioned in top-right corner */}
-      <div className="absolute top-4 right-4 z-20">
-        <SoundSettings />
+      <div className="absolute top-4 right-4 z-50">
+        <CardContainer className="w-auto h-auto">
+          <CardItem
+            translateZ={50}
+            rotateX={-15}
+            rotateZ={10}
+            className="p-1 bg-slate-800/60 backdrop-blur-lg border border-slate-700 rounded-lg hover:shadow-xl hover:shadow-cyan-500/30"
+          >
+            <SoundSettings />
+          </CardItem>
+        </CardContainer>
       </div>
 
       {/* Background Effects */}
-      <BackgroundBeams className="opacity-20" />
-      <Spotlight className="-top-40 left-0 md:left-60 md:-top-20" fill="blue" />
+      <Vortex
+        backgroundColor="black"
+        className="fixed inset-0 w-full h-full z-0"
+        particleColors={["#3b82f6", "#8b5cf6", "#ec4899", "#10b981"]}
+        rangeY={200}
+        baseHue={260}
+      />
+      <BackgroundBeams className="opacity-20 z-0" />
+      <Spotlight
+        className="-top-40 left-0 md:left-60 md:-top-20 z-10"
+        fill="blue"
+      />
 
       {/* Floating Meteors Effect */}
-      <div className="absolute inset-0 pointer-events-none">
-        <Meteors number={10} />
+      <Meteors
+        number={20}
+        className="opacity-70 fixed inset-0 pointer-events-none z-[5]"
+      />
+
+      {/* Title with Sparkles */}
+      <div className="w-full max-w-4xl text-center relative z-10 mb-8">
+        <SparklesCore
+          id="tsparticles"
+          background="transparent"
+          minSize={0.6}
+          maxSize={1.4}
+          particleDensity={100}
+          className="w-full h-20 absolute"
+          particleColor="#fff"
+        />
+        <h1 className="text-5xl md:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-purple-500 to-blue-500 my-6 relative z-20">
+          SayWhat
+        </h1>
+        <TextGenerateEffect
+          words="The Ultimate Social Word Game"
+          className="text-xl text-slate-300"
+          duration={1.2}
+        />
       </div>
 
       {/* Main Content */}
@@ -170,29 +234,14 @@ export default function HomeScreen() {
         animate="visible"
         exit="exit"
         variants={containerVariants}
-        className="w-full max-w-md relative z-10"
+        className="w-full max-w-lg relative z-20"
       >
         <CardContainer className="w-full">
-          <CardBody className="bg-slate-900/80 backdrop-blur-sm border border-slate-800 rounded-2xl p-6 shadow-xl">
-            {/* Game Title */}
-            <motion.div
-              initial={{ y: -30, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2, type: "spring" }}
-              className="text-center mb-8"
-            >
-              <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-purple-500 to-blue-500">
-                Game Room
-              </h1>
-              <div className="mt-3">
-                <GamingIllustration className="h-24 mx-auto" />
-              </div>
-            </motion.div>
-
+          <CardBody className="bg-slate-900/80 backdrop-blur-xl border border-slate-700/70 rounded-2xl p-8 shadow-xl">
             {/* Tabs */}
-            <div className="flex gap-4 mb-6 relative">
+            <div className="flex gap-6 mb-8 relative">
               <motion.div
-                className="absolute bottom-0 h-1 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full"
+                className="absolute bottom-0 h-1.5 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full"
                 animate={{
                   left: activeTab === "create" ? "0%" : "50%",
                   width: "50%",
@@ -200,27 +249,41 @@ export default function HomeScreen() {
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
               />
 
-              <motion.button
-                whileHover={{ y: -2 }}
+              <CardItem
+                translateZ={30}
+                as={motion.button}
+                whileHover={{ y: -4, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className={`flex-1 py-3 rounded-t font-medium ${
-                  activeTab === "create" ? "text-white" : "text-slate-400"
+                className={`flex-1 py-3 rounded-t text-lg font-medium relative ${
+                  activeTab === "create"
+                    ? "text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-gradient-to-r after:from-blue-400 after:to-purple-500"
+                    : "text-slate-400"
                 }`}
-                onClick={() => setActiveTab("create")}
+                onClick={() => {
+                  setActiveTab("create");
+                  playClickSound();
+                }}
               >
-                Create Room
-              </motion.button>
+                Create Game
+              </CardItem>
 
-              <motion.button
-                whileHover={{ y: -2 }}
+              <CardItem
+                translateZ={30}
+                as={motion.button}
+                whileHover={{ y: -4, scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                className={`flex-1 py-3 rounded-t font-medium ${
-                  activeTab === "join" ? "text-white" : "text-slate-400"
+                className={`flex-1 py-3 rounded-t text-lg font-medium relative ${
+                  activeTab === "join"
+                    ? "text-white after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-gradient-to-r after:from-cyan-400 after:to-teal-500"
+                    : "text-slate-400"
                 }`}
-                onClick={() => setActiveTab("join")}
+                onClick={() => {
+                  setActiveTab("join");
+                  playClickSound();
+                }}
               >
-                Join Room
-              </motion.button>
+                Join Game
+              </CardItem>
             </div>
 
             {/* Error Display */}
@@ -231,8 +294,9 @@ export default function HomeScreen() {
                   initial="hidden"
                   animate="visible"
                   exit="hidden"
-                  className="mb-4 p-3 bg-red-900/40 border border-red-500 text-red-200 rounded-lg"
+                  className="mb-6 p-4 bg-red-900/40 border border-red-500 text-red-200 rounded-lg flex items-center"
                 >
+                  <span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse mr-3"></span>
                   {error}
                 </motion.div>
               )}
@@ -249,167 +313,186 @@ export default function HomeScreen() {
                   variants={formVariants}
                 >
                   {activeTab === "create" ? (
-                    <form onSubmit={handleCreateRoom} className="space-y-4">
-                      <div>
-                        <label className="block mb-2 text-slate-300">
-                          Your Nickname
-                        </label>
-                        <motion.input
-                          whileFocus={{ scale: 1.02 }}
-                          type="text"
-                          value={nickname}
-                          onChange={(e) => setNickname(e.target.value)}
-                          className="w-full p-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                          disabled={isLoading}
-                          placeholder="Enter your name"
-                        />
-                      </div>
+                    <form onSubmit={handleCreateRoom} className="space-y-6">
+                      <CardItem translateZ={30} className="w-full">
+                        <div>
+                          <label className="mb-2.5 text-slate-300 flex items-center text-base">
+                            <Users className="w-5 h-5 mr-2.5 text-purple-400" />
+                            Your Nickname
+                          </label>
+                          <motion.input
+                            whileFocus={{ scale: 1.02, borderColor: "#8b5cf6" }}
+                            type="text"
+                            value={nickname}
+                            onChange={(e) => setNickname(e.target.value)}
+                            className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-lg text-white text-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                            disabled={isLoading}
+                            placeholder="Enter your name"
+                          />
+                        </div>
+                      </CardItem>
 
-                      <div>
-                        <label className="block mb-2 text-slate-300">
-                          Number of Rounds
-                          <span className="text-sm text-slate-400 ml-2 font-light">
-                            (each player gets to be the decider once per round)
-                          </span>
-                        </label>
-                        <motion.select
-                          whileFocus={{ scale: 1.02 }}
-                          value={totalRounds}
-                          onChange={(e) =>
-                            setTotalRounds(Number(e.target.value))
-                          }
-                          className="w-full p-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                          disabled={isLoading}
-                        >
-                          <option value={3}>3 Rounds</option>
-                          <option value={5}>5 Rounds</option>
-                          <option value={7}>7 Rounds</option>
-                        </motion.select>
-                      </div>
+                      <CardItem translateZ={40} className="w-full">
+                        <div>
+                          <label className="block mb-2 text-slate-300 flex items-center">
+                            <Gamepad2 className="w-4 h-4 mr-2 text-blue-400" />
+                            Number of Rounds
+                            <span className="text-sm text-slate-400 ml-2 font-light">
+                              (each player becomes the decider)
+                            </span>
+                          </label>
+                          <motion.div className="flex gap-3">
+                            {[3, 5, 7].map((num) => (
+                              <motion.button
+                                key={num}
+                                type="button"
+                                whileHover={{ scale: 1.05, y: -3 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => {
+                                  setTotalRounds(num);
+                                  playClickSound();
+                                }}
+                                className={`flex-1 py-3 border ${
+                                  totalRounds === num
+                                    ? "bg-blue-900/40 border-blue-500 text-blue-200"
+                                    : "bg-slate-800/50 border-slate-700 text-white"
+                                } rounded-lg font-medium transition-all duration-200`}
+                              >
+                                {num}
+                              </motion.button>
+                            ))}
+                          </motion.div>
+                        </div>
+                      </CardItem>
 
-                      <div>
-                        <label className="block mb-2 text-slate-300">
-                          Time Limit (per turn)
-                        </label>
-                        <motion.select
-                          whileFocus={{ scale: 1.02 }}
-                          value={timeLimit}
-                          onChange={(e) => setTimeLimit(Number(e.target.value))}
-                          className="w-full p-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                          disabled={isLoading}
-                        >
-                          <option value={30}>30 Seconds</option>
-                          <option value={60}>60 Seconds</option>
-                          <option value={90}>90 Seconds</option>
-                        </motion.select>
-                      </div>
+                      <CardItem translateZ={50} className="w-full">
+                        <div>
+                          <label className="block mb-2 text-slate-300 flex items-center">
+                            <Clock className="w-4 h-4 mr-2 text-cyan-400" />
+                            Time Limit (per turn)
+                          </label>
+                          <motion.div className="flex gap-3">
+                            {[30, 60, 90].map((time) => (
+                              <motion.button
+                                key={time}
+                                type="button"
+                                whileHover={{ scale: 1.05, y: -3 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => {
+                                  setTimeLimit(time);
+                                  playClickSound();
+                                }}
+                                className={`flex-1 py-3 border ${
+                                  timeLimit === time
+                                    ? "bg-cyan-900/40 border-cyan-500 text-cyan-200"
+                                    : "bg-slate-800/50 border-slate-700 text-white"
+                                } rounded-lg font-medium transition-all duration-200`}
+                              >
+                                {time}s
+                              </motion.button>
+                            ))}
+                          </motion.div>
+                        </div>
+                      </CardItem>
 
-                      <motion.button
-                        type="submit"
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
-                        className="w-full mt-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-medium hover:opacity-90 disabled:opacity-70 disabled:cursor-not-allowed"
-                        disabled={isLoading}
-                      >
-                        {isLoading ? (
-                          <div className="flex items-center justify-center">
-                            <svg
-                              className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              ></circle>
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              ></path>
-                            </svg>
-                            Creating Game Room...
-                          </div>
-                        ) : (
-                          "Create & Start Game"
-                        )}
-                      </motion.button>
+                      <CardItem translateZ={60} className="w-full">
+                        <div className="w-full bg-blue-900/80 text-white border border-blue-700/50 hover:border-blue-600 rounded-[0.75rem] relative overflow-hidden">
+                          <div className="absolute inset-0 bg-[radial-gradient(var(--blue-500)_40%,transparent_60%)]"></div>
+                          <motion.button
+                            type="submit"
+                            disabled={isLoading}
+                            className="h-full w-full z-10 relative flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600/70 to-purple-600/70 rounded-[0.6rem] transition-all"
+                            whileHover={{
+                              letterSpacing: "0.05em",
+                              scale: 1.02,
+                            }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            {isLoading ? (
+                              <div className="flex items-center justify-center">
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                                Creating Game...
+                              </div>
+                            ) : (
+                              <div className="flex items-center">
+                                <span>Create Game Room</span>
+                                <ArrowRight className="w-5 h-5 ml-2" />
+                              </div>
+                            )}
+                          </motion.button>
+                        </div>
+                      </CardItem>
                     </form>
                   ) : (
-                    <form onSubmit={handleJoinRoom} className="space-y-4">
-                      <div>
-                        <label className="block mb-2 text-slate-300">
-                          Room Code
-                        </label>
-                        <motion.input
-                          whileFocus={{ scale: 1.02 }}
-                          type="text"
-                          value={roomCode}
-                          onChange={(e) =>
-                            setRoomCode(e.target.value.toUpperCase())
-                          }
-                          className="w-full p-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white uppercase tracking-wider font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                          disabled={isLoading}
-                          maxLength={6}
-                          placeholder="ENTER CODE"
-                        />
-                      </div>
+                    <form onSubmit={handleJoinRoom} className="space-y-6">
+                      <CardItem translateZ={30} className="w-full">
+                        <HoverBorderGradient
+                          containerClassName="w-full"
+                          className="p-4 bg-slate-800/50 rounded-lg"
+                        >
+                          <label className="block mb-2 text-slate-300">
+                            Room Code
+                          </label>
+                          <motion.input
+                            whileFocus={{ scale: 1.02, borderColor: "#0ea5e9" }}
+                            type="text"
+                            value={roomCode}
+                            onChange={(e) =>
+                              setRoomCode(e.target.value.toUpperCase())
+                            }
+                            className="w-full p-3 bg-slate-800/70 border border-slate-600 rounded-lg text-white uppercase tracking-widest font-mono focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
+                            disabled={isLoading}
+                            maxLength={6}
+                            placeholder="ENTER CODE"
+                          />
+                        </HoverBorderGradient>
+                      </CardItem>
 
-                      <div>
-                        <label className="block mb-2 text-slate-300">
-                          Your Nickname
-                        </label>
-                        <motion.input
-                          whileFocus={{ scale: 1.02 }}
-                          type="text"
-                          value={joinNickname}
-                          onChange={(e) => setJoinNickname(e.target.value)}
-                          className="w-full p-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-                          disabled={isLoading}
-                          placeholder="Enter your name"
-                        />
-                      </div>
+                      <CardItem translateZ={40} className="w-full">
+                        <div>
+                          <label className="block mb-2 text-slate-300 flex items-center">
+                            <Users className="w-4 h-4 mr-2 text-teal-400" />
+                            Your Nickname
+                          </label>
+                          <motion.input
+                            whileFocus={{ scale: 1.02, borderColor: "#14b8a6" }}
+                            type="text"
+                            value={joinNickname}
+                            onChange={(e) => setJoinNickname(e.target.value)}
+                            className="w-full p-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none"
+                            disabled={isLoading}
+                            placeholder="Enter your name"
+                          />
+                        </div>
+                      </CardItem>
 
-                      <motion.button
-                        type="submit"
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
-                        className="w-full mt-6 bg-gradient-to-r from-emerald-600 to-teal-600 text-white py-3 rounded-lg font-medium hover:opacity-90 disabled:opacity-70 disabled:cursor-not-allowed"
-                        disabled={isLoading}
-                      >
-                        {isLoading ? (
-                          <div className="flex items-center justify-center">
-                            <svg
-                              className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                              xmlns="http://www.w3.org/2000/svg"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                            >
-                              <circle
-                                className="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                strokeWidth="4"
-                              ></circle>
-                              <path
-                                className="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                              ></path>
-                            </svg>
-                            Joining Game...
-                          </div>
-                        ) : (
-                          "Join Game"
-                        )}
-                      </motion.button>
+                      <CardItem translateZ={60} className="w-full">
+                        <div className="w-full bg-emerald-900/80 text-white border border-emerald-700/50 hover:border-emerald-600 rounded-[0.75rem] relative overflow-hidden">
+                          <div className="absolute inset-0 bg-[radial-gradient(var(--emerald-500)_40%,transparent_60%)]"></div>
+                          <motion.button
+                            type="submit"
+                            disabled={isLoading}
+                            className="h-full w-full z-10 relative flex items-center justify-center px-6 py-3 bg-gradient-to-r from-emerald-600/70 to-teal-600/70 rounded-[0.6rem] transition-all"
+                            whileHover={{
+                              letterSpacing: "0.05em",
+                              scale: 1.02,
+                            }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            {isLoading ? (
+                              <div className="flex items-center justify-center">
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                                Joining Game...
+                              </div>
+                            ) : (
+                              <div className="flex items-center">
+                                <span>Join Game</span>
+                                <ArrowRight className="w-5 h-5 ml-2" />
+                              </div>
+                            )}
+                          </motion.button>
+                        </div>
+                      </CardItem>
                     </form>
                   )}
                 </motion.div>
@@ -420,7 +503,7 @@ export default function HomeScreen() {
       </motion.div>
 
       {/* Statistics Footer */}
-      <div className="mt-8 relative z-10">
+      <div className="mt-16 relative z-10">
         <GameStatistics />
       </div>
     </div>

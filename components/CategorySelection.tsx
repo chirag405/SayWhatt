@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { Player } from "@/types/types";
 import { useGameStore } from "@/store/game-store";
 import { motion } from "framer-motion";
-import { AcernityCard } from "@/components/ui/acernity/card";
-import { GradientButton } from "@/components/ui/acernity/gradient-button";
-import { Sparkles } from "@/components/ui/acernity/Sparkles";
-import { GlowingText } from "@/components/ui/acernity/glowing-text";
+import { Card } from "@/components/ui/card";
+
+import Sparkles from "@/components/ui/Sparkles";
+import { GlowingText } from "@/components/ui/glowing-text";
 import { playSound, SOUND_PATHS } from "@/utils/soundUtils"; // Added sound imports
 
 interface CategorySelectionProps {
@@ -143,7 +143,7 @@ export function CategorySelection({
             </GlowingText>
           </Sparkles>
 
-          <AcernityCard className="p-6 text-center backdrop-blur-md border-purple-300/20">
+          <Card className="p-6 text-center backdrop-blur-md border-purple-300/20">
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -162,7 +162,7 @@ export function CategorySelection({
             >
               <div className="w-8 h-8 border-4 border-t-purple-500 border-purple-300 rounded-full animate-spin mx-auto" />
             </motion.div>
-          </AcernityCard>
+          </Card>
         </motion.div>
       </div>
     );
@@ -182,7 +182,7 @@ export function CategorySelection({
             </GlowingText>
           </Sparkles>
 
-          <AcernityCard className="p-6 text-center backdrop-blur-md border-purple-300/20">
+          <Card className="p-6 text-center backdrop-blur-md border-purple-300/20">
             <motion.p
               animate={{ opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 1.5, repeat: Infinity }}
@@ -198,7 +198,7 @@ export function CategorySelection({
             >
               <div className="w-8 h-8 border-4 border-t-purple-500 border-purple-300 rounded-full mx-auto" />
             </motion.div>
-          </AcernityCard>
+          </Card>
         </motion.div>
       </div>
     );
@@ -298,7 +298,7 @@ export function CategorySelection({
                   show: { opacity: 1, y: 0 },
                 }}
               >
-                <AcernityCard
+                <Card
                   className={`p-6 cursor-pointer transition-all hover:scale-105 ${
                     selectedCategory === category.name
                       ? "border-2 border-white"
@@ -319,14 +319,14 @@ export function CategorySelection({
                       {category.name}
                     </h3>
                   </div>
-                </AcernityCard>
+                </Card>
               </motion.div>
             );
           })}
         </motion.div>
       ) : (
         <div className="flex justify-center">
-          <AcernityCard className="p-8 text-center backdrop-blur-md border-purple-300/20 max-w-md">
+          <Card className="p-8 text-center backdrop-blur-md border-purple-300/20 max-w-md">
             <motion.div
               animate={{ scale: [1, 1.05, 1] }}
               transition={{ duration: 2, repeat: Infinity }}
@@ -338,7 +338,7 @@ export function CategorySelection({
               Waiting for {currentDecider?.nickname || "the decider"} to
               select...
             </p>
-          </AcernityCard>
+          </Card>
         </div>
       )}
     </div>

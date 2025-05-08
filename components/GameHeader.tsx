@@ -2,7 +2,7 @@
 
 import { motion } from "framer-motion";
 import { Player } from "@/types/types";
-import { GlowingText } from "./ui/acernity/glowing-text";
+import { GlowingText } from "./ui/glowing-text";
 
 interface GameHeaderProps {
   roundNumber: number;

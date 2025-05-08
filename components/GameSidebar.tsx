@@ -3,7 +3,7 @@ import { User, Trophy, Coffee, AlertTriangle } from "lucide-react";
 import { motion } from "framer-motion";
 import { ConnectionStatus, Player } from "@/types/types";
 import { useGameStore } from "@/store/game-store";
-import { Sparkles } from "@/components/ui/acernity/Sparkles";
+import Sparkles from "@/components/ui/Sparkles";
 
 interface GameSidebarProps {
   players: Player[];

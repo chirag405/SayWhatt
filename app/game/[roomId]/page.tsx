@@ -18,11 +18,11 @@ import { useTabCloseHandler } from "@/utils/useTabCloseHandler";
 // import { DisconnectionNotice } from "@/components/DisconnectionNotice";
 import { GameCompleted } from "@/components/GameCompleted";
 import { GameTimer } from "@/components/GameTimer";
-import { Sparkles } from "@/components/ui/acernity/Sparkles";
-import { AcernityCard } from "@/components/ui/acernity/card";
-import { GradientButton } from "@/components/ui/acernity/gradient-button";
-import AcernitySpotlight from "@/components/ui/acernity/spotlight";
-import { GlowingText } from "@/components/ui/acernity/glowing-text";
+import Sparkles from "@/components/ui/Sparkles";
+import { Card } from "@/components/ui/card";
+import { GradientButton } from "@/components/ui/gradient-button";
+
+import { GlowingText } from "@/components/ui/glowing-text";
 import { SoundSettings } from "@/components/SoundSettings";
 
 // Sound utilities
@@ -33,6 +33,7 @@ import {
   SOUND_PATHS,
 } from "@/utils/soundUtils";
 import { createClient } from "@/utils/supabase/client";
+import { Spotlight } from "@/components/ui/spotlight";
 
 export default function GameScreen() {
   const router = useRouter();
@@ -99,9 +100,14 @@ export default function GameScreen() {
 
   useTabCloseHandler(currentUser?.id || null, currentRoom?.id || null);
 
-  // Preload sounds when component mounts
+  // Preload sounds when component mounts and stop any background music
   useEffect(() => {
+    // Stop all sounds when entering game screen, regardless of toggle state
+    stopAllSounds();
+
+    // Then preload sounds for later use (but don't play anything yet)
     preloadSounds();
+
     return () => {
       stopAllSounds();
     };
@@ -400,20 +406,20 @@ export default function GameScreen() {
   if (error)
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-900 to-slate-800">
-        <AcernityCard className="p-8 max-w-md border-red-200/20">
+        <Card className="p-8 max-w-md border-red-200/20">
           <h2 className="text-2xl font-bold text-red-400 mb-4">Error</h2>
           <p className="text-gray-300 mb-6">{error}</p>
           <GradientButton onClick={() => router.push("/")} className="w-full">
             Return to Home
           </GradientButton>
-        </AcernityCard>
+        </Card>
       </div>
     );
 
   if (!currentGame || !currentUser || !currentRoom) return null;
 
   return (
-    <AcernitySpotlight className="flex h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+    <Spotlight className="flex h-screen bg-gradient-to-br from-slate-900 to-slate-800">
       {/* Sound Settings Button - Positioned in top-right */}
       <div className="absolute top-4 right-4 z-20">
         <SoundSettings />
@@ -569,6 +575,6 @@ export default function GameScreen() {
           </AnimatePresence>
         </div>
       </div>
-    </AcernitySpotlight>
+    </Spotlight>
   );
 }

@@ -11,10 +11,10 @@ import {
 
 import { useGameStore } from "@/store/game-store";
 import { useUserRoomStore } from "@/store/user-room-store";
-import { AcernityCard } from "@/components/ui/acernity/card";
-import { GradientButton } from "@/components/ui/acernity/gradient-button";
-import { Sparkles } from "@/components/ui/acernity/Sparkles";
-import { GlowingText } from "@/components/ui/acernity/glowing-text";
+import { Card } from "@/components/ui/card";
+import { GradientButton } from "@/components/ui//gradient-button";
+import Sparkles from "@/components/ui/Sparkles";
+import { GlowingText } from "@/components/ui/glowing-text";
 import { playSound, SOUND_PATHS } from "@/utils/soundUtils";
 
 interface VotingPhaseProps {
@@ -323,7 +323,7 @@ export function VotingPhase({
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.3 }}
           >
-            <AcernityCard className="p-6 mb-6 border-purple-500/20">
+            <Card className="p-6 mb-6 border-purple-500/20">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-white">
                   Answer {currentAnswerIndex + 1} of {turnAnswers.length}
@@ -391,7 +391,7 @@ export function VotingPhase({
                   </div>
                 </motion.button>
               </div>
-            </AcernityCard>
+            </Card>
           </motion.div>
         </AnimatePresence>
 
