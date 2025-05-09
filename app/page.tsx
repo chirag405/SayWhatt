@@ -25,7 +25,6 @@ import {
   stopSound,
   stopAllSounds,
   SOUND_PATHS,
-  checkAndStartLobbyMusic,
 } from "@/utils/soundUtils";
 
 // Icons
@@ -65,19 +64,13 @@ export default function HomeScreen() {
     // Stop any previous sounds that might be playing
     stopAllSounds();
 
-    // Start the home screen background music immediately
-    console.log("Starting home screen lobby music");
-    // Use checkAndStartLobbyMusic() which properly handles the lobby music
-    checkAndStartLobbyMusic();
-
     // Delay showing the form for a better entrance animation
     setTimeout(() => {
       setIsFormVisible(true);
     }, 800);
 
     return () => {
-      // Don't stop lobby music when navigating to lobby page
-      // It will continue playing and be managed by the lobby component
+      // No cleanup needed for sounds here
     };
   }, [resetState]);
 

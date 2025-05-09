@@ -13,17 +13,23 @@ import { useUserRoomStore } from "@/store/user-room-store";
 import { VotingPhase } from "@/components/VotingPhase";
 import { CategorySelection } from "@/components/CategorySelection";
 import { ScenarioSelection } from "@/components/ScenarioSelection";
+
 import { AnswerSubmission } from "@/components/AnswerSubmission";
 import { useTabCloseHandler } from "@/utils/useTabCloseHandler";
-// import { DisconnectionNotice } from "@/components/DisconnectionNotice";
 import { GameCompleted } from "@/components/GameCompleted";
 import { GameTimer } from "@/components/GameTimer";
+import { GameSidebar } from "@/components/GameSidebar";
 import Sparkles from "@/components/ui/Sparkles";
 import { Card } from "@/components/ui/card";
 import { GradientButton } from "@/components/ui/gradient-button";
-
 import { GlowingText } from "@/components/ui/glowing-text";
 import { SoundSettings } from "@/components/SoundSettings";
+import { CardContainer, CardBody, CardItem } from "@/components/ui/3d-card";
+import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
+import { Vortex } from "@/components/ui/vortex";
+import { Meteors } from "@/components/ui/meteors";
+import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
+import BackgroundBeams from "@/components/ui/background-beams";
 
 // Sound utilities
 import {
@@ -34,6 +40,19 @@ import {
 } from "@/utils/soundUtils";
 import { createClient } from "@/utils/supabase/client";
 import { Spotlight } from "@/components/ui/spotlight";
+
+// Icons
+import {
+  Clock,
+  AlertTriangle,
+  Trophy,
+  Users,
+  ArrowLeft,
+  Home,
+  Star,
+  Zap,
+  User,
+} from "lucide-react";
 
 export default function GameScreen() {
   const router = useRouter();
@@ -388,193 +407,272 @@ export default function GameScreen() {
     }
   };
 
-  if (isLoading)
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-900 to-slate-800">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <div className="w-24 h-24 border-4 border-t-purple-500 animate-spin mb-6" />
-          <Sparkles>
-            <h2 className="text-3xl font-bold text-white mb-2">
-              Loading game...
-            </h2>
-          </Sparkles>
-          <p className="text-purple-300 text-lg">Preparing your adventure</p>
-        </motion.div>
-      </div>
-    );
+      <div className="min-h-screen bg-black overflow-hidden relative flex items-center justify-center">
+        {/* Background Effects */}
+        <Vortex
+          backgroundColor="black"
+          className="fixed inset-0 w-full h-full z-0"
+          particleColors={["#3b82f6", "#8b5cf6", "#ec4899", "#10b981"]}
+          rangeY={200}
+          baseHue={260}
+        />
+        <BackgroundBeams className="opacity-20 z-0" />
+        <Meteors
+          number={10}
+          className="opacity-70 fixed inset-0 pointer-events-none z-[5]"
+        />
 
-  if (error)
-    return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-900 to-slate-800">
-        <Card className="p-8 max-w-md border-red-200/20">
-          <h2 className="text-2xl font-bold text-red-400 mb-4">Error</h2>
-          <p className="text-gray-300 mb-6">{error}</p>
-          <GradientButton onClick={() => router.push("/")} className="w-full">
-            Return to Home
-          </GradientButton>
-        </Card>
+        <CardContainer className="relative z-10">
+          <CardBody className="bg-slate-900/75 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-8 md:p-10 shadow-2xl shadow-purple-600/40 group/card">
+            <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover/card:border-purple-500/70 transition-all duration-500 pointer-events-none" />
+
+            <CardItem translateZ={60} className="mb-6 flex justify-center">
+              <div className="relative">
+                <div className="w-20 h-20 border-4 border-b-purple-500 border-r-blue-500 border-t-pink-500 border-l-transparent rounded-full animate-spin"></div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Zap className="h-8 w-8 text-purple-400" />
+                </div>
+              </div>
+            </CardItem>
+
+            <CardItem translateZ={80} className="text-center mb-6">
+              <Sparkles>
+                <TextGenerateEffect
+                  words="Entering Game Matrix"
+                  className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-br from-cyan-400 via-purple-500 to-pink-500 pb-2"
+                  duration={0.7}
+                />
+              </Sparkles>
+              <p className="text-md text-purple-300 mt-2">
+                Preparing your gaming experience...
+              </p>
+            </CardItem>
+
+            <CardItem translateZ={40}>
+              <motion.div
+                initial={{ width: "0%" }}
+                animate={{
+                  width: "100%",
+                  transition: { duration: 2.5, ease: "easeInOut" },
+                }}
+                className="bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 h-1.5 rounded-full"
+              />
+            </CardItem>
+          </CardBody>
+        </CardContainer>
       </div>
     );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-black overflow-hidden relative flex items-center justify-center">
+        {/* Background Effects */}
+        <Vortex
+          backgroundColor="black"
+          className="fixed inset-0 w-full h-full z-0"
+          particleColors={["#3b82f6", "#8b5cf6", "#ec4899", "#10b981"]}
+          rangeY={200}
+          baseHue={260}
+          darkMode={true}
+        />
+        <BackgroundBeams className="opacity-10 z-0" />
+
+        <CardContainer className="relative z-10 max-w-lg">
+          <CardBody className="bg-slate-900/75 backdrop-blur-xl border border-red-500/30 rounded-2xl p-8 shadow-2xl">
+            <CardItem translateZ={20}>
+              <div className="text-center">
+                <div className="mx-auto w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mb-6 border border-red-500/40">
+                  <AlertTriangle className="h-8 w-8 text-red-500" />
+                </div>
+                <GlowingText className="text-2xl font-bold text-red-500 mb-4">
+                  Connection Error
+                </GlowingText>
+                <p className="text-gray-300 mb-6">{error}</p>
+                <GradientButton
+                  onClick={() => router.push("/")}
+                  className="w-full flex items-center justify-center gap-2"
+                  gradientFrom="from-gray-600"
+                  gradientTo="to-gray-700"
+                >
+                  <Home className="h-4 w-4" />
+                  <span>Return to Home Base</span>
+                </GradientButton>
+              </div>
+            </CardItem>
+          </CardBody>
+        </CardContainer>
+      </div>
+    );
+  }
 
   if (!currentGame || !currentUser || !currentRoom) return null;
 
   return (
-    <Spotlight className="flex h-screen bg-gradient-to-br from-slate-900 to-slate-800">
-      {/* Sound Settings Button - Positioned in top-right */}
-      <div className="absolute top-4 right-4 z-20">
-        <SoundSettings />
+    <div className="min-h-screen bg-black overflow-hidden relative">
+      {/* Background Effects */}
+      <Vortex
+        backgroundColor="black"
+        className="fixed inset-0 w-full h-full z-0"
+        particleColors={["#3b82f6", "#8b5cf6", "#ec4899", "#10b981"]}
+        rangeY={200}
+        baseHue={260}
+      />
+      <BackgroundBeams className="opacity-20 z-0" />
+      <Meteors
+        number={20}
+        className="opacity-75 fixed inset-0 pointer-events-none z-[5]"
+      />
+      <Spotlight
+        className="-top-40 left-0 md:left-60 md:-top-20 z-10"
+        fill="blue"
+      />
+
+      {/* Sound Settings Button - Positioned in top-right corner */}
+      <div className="absolute top-4 right-4 z-50">
+        <CardContainer className="w-auto h-auto">
+          <CardItem
+            translateZ={50}
+            rotateX={-15}
+            rotateZ={10}
+            className="p-1 bg-slate-800/60 backdrop-blur-lg border border-slate-700 rounded-lg hover:shadow-2xl hover:shadow-cyan-500/50"
+          >
+            <SoundSettings />
+          </CardItem>
+        </CardContainer>
       </div>
 
-      {/* Sidebar */}
-      <motion.div
-        initial={{ x: -300, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        className="w-80 bg-slate-800/80 backdrop-blur-md border-r border-purple-500/20 p-4 flex flex-col"
-      >
-        <div className="mb-8 text-center">
-          <Sparkles>
-            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-500">
-              Prompt Game
-            </h1>
-          </Sparkles>
-          <div className="mt-2 px-4 py-1 bg-purple-900/30 rounded-full inline-flex items-center space-x-1">
-            <span className="w-2 h-2 rounded-full bg-green-400" />
-            <span className="text-xs text-gray-300">
-              Room: {currentRoom.room_code}
-            </span>
-          </div>
+      <div className="flex min-h-screen z-10 relative">
+        {/* Sidebar */}
+        <div className="flex-shrink-0 z-10">
+          <GameSidebar
+            players={currentGame.players}
+            currentUserId={currentUser.id}
+            currentTurn={turnNumber}
+            roundNumber={roundNumber}
+            totalRounds={totalRounds}
+          />
         </div>
 
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-gray-400">Round Progress</span>
-            <span className="text-sm font-medium text-purple-300">
-              {roundNumber}/{totalRounds}
-            </span>
-          </div>
-          <div className="w-full h-2 bg-gray-700 rounded-full overflow-hidden">
-            <motion.div
-              className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
-              style={{ width: `${(roundNumber / totalRounds) * 100}%` }}
-              initial={{ width: 0 }}
-              animate={{ width: `${(roundNumber / totalRounds) * 100}%` }}
-              transition={{ duration: 0.8, ease: "easeOut" }}
-            />
-          </div>
-        </div>
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col px-1 md:px-6 lg:px-10 py-6 overflow-hidden">
+          {/* Game Header - Round info, timer, etc */}
+          <CardContainer perspective={1200}>
+            <CardBody className="w-full bg-slate-900/75 backdrop-blur-xl border border-slate-700/80 rounded-lg shadow-lg shadow-purple-500/20 mb-6 p-4">
+              <div className="absolute inset-0 rounded-lg border-2 border-transparent group-hover:border-purple-500/50 transition-all duration-500 pointer-events-none animate-pulse-border" />
 
-        <div className="flex-1 overflow-y-auto">
-          <h3 className="text-sm uppercase tracking-wider text-gray-400 mb-3">
-            Players
-          </h3>
-          <div className="space-y-2">
-            {currentGame.players.map((player, index) => (
-              <motion.div
-                key={player.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.1 * index, duration: 0.3 }}
-                className={`flex items-center p-2 rounded-lg ${
-                  player.id === currentUser.id
-                    ? "bg-purple-500/20 border border-purple-500/30"
-                    : "hover:bg-slate-700/50"
-                }`}
-              >
-                <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center mr-3 ${
-                    player.id === currentTurn?.decider_id
-                      ? "bg-gradient-to-br from-amber-400 to-orange-500"
-                      : "bg-gradient-to-br from-purple-500/70 to-pink-500/70"
-                  }`}
-                >
-                  {player.nickname[0].toUpperCase()}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between">
-                    <span
-                      className={`font-medium ${
-                        player.id === currentUser.id
-                          ? "text-purple-300"
-                          : "text-white"
-                      }`}
-                    >
-                      {player.nickname}
-                    </span>
-                    <span className="text-sm font-medium text-purple-300">
-                      {player.total_points || 0}
-                    </span>
+              <div className="flex justify-between items-center">
+                <CardItem translateZ={20} className="flex flex-col">
+                  <div className="flex items-center">
+                    <Trophy className="h-5 w-5 text-yellow-400 mr-2" />
+                    <h2 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
+                      Round {roundNumber}/{totalRounds}
+                    </h2>
                   </div>
-                  {player.id === currentTurn?.decider_id && (
-                    <span className="text-xs text-amber-400">Decider</span>
-                  )}
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </motion.div>
+                  <p className="text-gray-400 mt-1">
+                    Turn #{turnNumber} •{" "}
+                    <span className="text-purple-300">
+                      Decider:{" "}
+                      <span className="font-semibold">
+                        {currentGame.players.find(
+                          (p) => p.id === currentTurn?.decider_id
+                        )?.nickname || "..."}
+                      </span>
+                    </span>
+                  </p>
+                </CardItem>
 
-      {/* Main Content */}
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <motion.div
-          initial={{ y: -50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="bg-slate-800/90 backdrop-blur-md border-b border-purple-500/20 p-4"
-        >
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-xl font-bold text-white">
-                Round {roundNumber}/{totalRounds}
-              </h2>
-              <p className="text-gray-400">
-                Turn #{turnNumber} •{" "}
-                <span className="text-purple-300">
-                  Decider:{" "}
-                  {currentGame.players.find(
-                    (p) => p.id === currentTurn?.decider_id
-                  )?.nickname || "..."}
-                </span>
-              </p>
-            </div>
+                {timerEnd && currentTurn?.status === "answering" && (
+                  <CardItem translateZ={30} className="flex flex-shrink-0">
+                    <HoverBorderGradient
+                      containerClassName="rounded-lg overflow-hidden"
+                      className="bg-slate-800/90 px-4 py-2 flex items-center"
+                      gradientClassName="bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500"
+                    >
+                      <Clock className="w-5 h-5 text-amber-400 mr-2" />
+                      <GameTimer
+                        endTime={timerEnd}
+                        timeLimit={currentRoom.time_limit}
+                      />
+                    </HoverBorderGradient>
+                  </CardItem>
+                )}
 
-            {timerEnd && currentTurn?.status === "answering" && (
-              <div className="bg-slate-700/70 px-4 py-2 rounded-lg flex items-center">
-                <svg
-                  className="w-5 h-5 text-amber-400 mr-2"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <GameTimer
-                  endTime={timerEnd}
-                  timeLimit={currentRoom.time_limit}
-                />
+                <CardItem translateZ={25} className="ml-auto">
+                  <GradientButton
+                    onClick={() => router.push("/")}
+                    className="flex items-center gap-1.5 text-sm py-1 px-2"
+                    gradientFrom="from-gray-600"
+                    gradientTo="to-slate-700"
+                    variant="outline"
+                  >
+                    <Home className="h-4 w-4" />
+                    <span>Exit</span>
+                  </GradientButton>
+                </CardItem>
               </div>
-            )}
-          </div>
-        </motion.div>
+            </CardBody>
+          </CardContainer>
 
-        <div className="flex-1 p-6 overflow-y-auto">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentTurn?.id || "loading"}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="h-full"
-            >
-              {renderGamePhase()}
-            </motion.div>
-          </AnimatePresence>
+          {/* Game Content Area */}
+          <CardContainer className="flex-1 w-full">
+            <CardBody className="w-full bg-slate-900/80 backdrop-blur-xl border border-slate-700/70 rounded-xl p-6 md:p-8 shadow-xl overflow-hidden flex">
+              <div className="flex-1 relative">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentTurn?.id || "loading"}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    transition={{
+                      type: "spring",
+                      stiffness: 300,
+                      damping: 30,
+                    }}
+                    className="h-full"
+                  >
+                    <CardItem translateZ={50} className="w-full h-full">
+                      {gameCompleted ? (
+                        <div className="relative">
+                          <div className="absolute -top-10 -right-10 -left-10 -bottom-10 bg-gradient-to-br from-yellow-500/20 via-amber-500/10 to-orange-500/20 blur-3xl z-0 pointer-events-none rounded-full"></div>
+                          <div className="relative z-10">
+                            {renderGamePhase()}
+                          </div>
+                        </div>
+                      ) : (
+                        renderGamePhase()
+                      )}
+                    </CardItem>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </CardBody>
+          </CardContainer>
         </div>
       </div>
-    </Spotlight>
+
+      {/* Animation styles */}
+      <style jsx global>{`
+        .animate-pulse-border {
+          animation: pulse-border-purple 4s infinite ease-in-out;
+        }
+        @keyframes pulse-border-purple {
+          0%,
+          100% {
+            border-color: rgba(168, 85, 247, 0.2);
+            box-shadow: 0 0 10px rgba(168, 85, 247, 0.1);
+          }
+          50% {
+            border-color: rgba(168, 85, 247, 0.6);
+            box-shadow: 0 0 25px rgba(168, 85, 247, 0.25);
+          }
+        }
+        .group-hover:hover .animate-pulse-border {
+          animation-duration: 2s;
+        }
+      `}</style>
+    </div>
   );
 }

@@ -13,7 +13,7 @@ interface GradientButtonProps
   fromColor?: string; // preferred
   toColor?: string; // preferred
   hoverScale?: number;
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "outline";
 }
 
 export const GradientButton = ({
@@ -31,19 +31,23 @@ export const GradientButton = ({
   const from = fromColor || gradientFrom || "from-purple-500";
   const to = toColor || gradientTo || "to-pink-500";
 
-  // You can use `variant` for further styling logic if needed
+  // Handle variants
   const variantClass =
     variant === "secondary"
-      ? "text-white" // adjust secondary variant style
-      : "text-white";
+      ? "text-white"
+      : variant === "outline"
+        ? "bg-transparent border border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300"
+        : "text-white";
+
+  // Use gradient only for primary and secondary variants
+  const gradientClass =
+    variant === "outline" ? "" : `bg-gradient-to-r ${from} ${to}`;
 
   return (
     <motion.button
       className={cn(
         "relative px-6 py-3 rounded-lg font-medium",
-        "bg-gradient-to-r",
-        from,
-        to,
+        gradientClass,
         "outline-none focus:ring-2 focus:ring-purple-500/50",
         "transition-all duration-300 ease-out",
         variantClass,

@@ -132,38 +132,23 @@ export function CategorySelection({
   if (isCategorySelected && isInScenarioSelectionPhase) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
+        <div className="text-center">
           <Sparkles>
-            <GlowingText className="text-2xl font-bold mb-6">
-              Category selected: {currentCategory}
+            <GlowingText className="text-2xl font-bold mb-4">
+              Category selected:{" "}
+              <span className="text-purple-200">{currentCategory}</span>
             </GlowingText>
           </Sparkles>
 
-          <Card className="p-6 text-center backdrop-blur-md border-purple-300/20">
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="text-lg text-purple-200"
-            >
-              {currentStatus === "selecting_scenario"
-                ? "Waiting for scenario selection..."
-                : "Moving to next phase..."}
-            </motion.p>
-
-            <motion.div
-              className="mt-4"
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
+          <Card className="p-6 text-center bg-slate-800 border border-purple-500/20">
+            <p className="text-lg text-purple-200">
+              Waiting for scenario selection...
+            </p>
+            <div className="mt-4 flex justify-center">
               <div className="w-8 h-8 border-4 border-t-purple-500 border-purple-300 rounded-full animate-spin mx-auto" />
-            </motion.div>
+            </div>
           </Card>
-        </motion.div>
+        </div>
       </div>
     );
   }
@@ -172,137 +157,82 @@ export function CategorySelection({
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
+        <div className="text-center">
           <Sparkles>
-            <GlowingText className="text-2xl font-bold mb-6">
+            <GlowingText className="text-2xl font-bold mb-4">
               Processing category selection...
             </GlowingText>
           </Sparkles>
 
-          <Card className="p-6 text-center backdrop-blur-md border-purple-300/20">
-            <motion.p
-              animate={{ opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-              className="text-lg text-purple-200"
-            >
+          <Card className="p-6 text-center bg-slate-800 border border-purple-500/20">
+            <p className="text-lg text-purple-200 animate-pulse">
               Updating game state...
-            </motion.p>
-
-            <motion.div
-              className="mt-4"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            >
-              <div className="w-8 h-8 border-4 border-t-purple-500 border-purple-300 rounded-full mx-auto" />
-            </motion.div>
+            </p>
+            <div className="mt-4 flex justify-center">
+              <div className="w-8 h-8 border-4 border-t-purple-500 border-purple-300 rounded-full animate-spin mx-auto" />
+            </div>
           </Card>
-        </motion.div>
+        </div>
       </div>
     );
   }
 
   // Default view - selecting a category
   return (
-    <div className="flex flex-col items-center justify-center h-full">
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="text-center mb-8"
-      >
+    <div className="flex flex-col items-center justify-center h-full w-full px-2 md:px-4">
+      <div className="text-center mb-8">
         <Sparkles>
-          <GlowingText className="text-3xl font-bold mb-2">
+          <GlowingText className="text-3xl md:text-4xl font-bold mb-2">
             {isDecider
               ? "Select a Category"
               : `${currentDecider?.nickname || "Decider"} is selecting a category`}
           </GlowingText>
         </Sparkles>
-
-        {/* Timer display - more prominent */}
         {isDecider && (
-          <motion.div
-            className="mb-4"
-            animate={{
-              scale: timeLeft <= 10 ? [1, 1.1, 1] : 1,
-              color:
-                timeLeft <= 10 ? ["#ff6b6b", "#ff0000", "#ff6b6b"] : "#a78bfa",
-            }}
-            transition={{
-              duration: 0.8,
-              repeat: timeLeft <= 10 ? Infinity : 0,
-            }}
-          >
-            <span className="text-2xl font-bold bg-black/30 px-4 py-2 rounded-full">
-              Time remaining: {formatTime(timeLeft)}
+          <div className="mb-4">
+            <span
+              className={`text-lg font-semibold bg-black/30 px-4 py-2 rounded-full text-white border border-purple-500/20 ${
+                timeLeft <= 10 ? "text-red-300" : ""
+              }`}
+            >
+              Time left: {formatTime(timeLeft)}
             </span>
-          </motion.div>
+          </div>
         )}
-
         {!isDecider && (
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-purple-300"
-          >
-            Waiting for category selection...
-          </motion.p>
+          <p className="text-purple-300">Waiting for category selection...</p>
         )}
-      </motion.div>
+      </div>
 
       {error && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          className="bg-red-500/20 border border-red-500/30 text-red-300 p-3 rounded-lg mb-6 max-w-lg mx-auto"
-        >
+        <div className="bg-red-500/20 border border-red-500/30 text-red-300 p-3 rounded-lg mb-6 max-w-lg mx-auto">
           {error}
-        </motion.div>
+        </div>
       )}
 
       {isDecider ? (
-        <motion.div
-          className="grid grid-cols-2 gap-4 max-w-2xl mx-auto"
-          variants={{
-            hidden: { opacity: 0 },
-            show: {
-              opacity: 1,
-              transition: {
-                staggerChildren: 0.1,
-              },
-            },
-          }}
-          initial="hidden"
-          animate="show"
-        >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl w-full mx-auto">
           {categories.map((category, index) => {
             const colorMap = {
               blue: "from-blue-600 to-blue-400",
               purple: "from-purple-600 to-purple-400",
               pink: "from-pink-600 to-pink-400",
               green: "from-green-600 to-green-400",
+              rose: "from-rose-600 to-rose-400",
+              yellow: "from-yellow-500 to-yellow-300",
+              red: "from-red-600 to-red-400",
+              orange: "from-orange-600 to-orange-400",
             };
-
             const bgGradient =
               colorMap[category.color as keyof typeof colorMap] ||
               "from-blue-600 to-blue-400";
-
             return (
-              <motion.div
-                key={category.id}
-                variants={{
-                  hidden: { opacity: 0, y: 20 },
-                  show: { opacity: 1, y: 0 },
-                }}
-              >
+              <div key={category.id}>
                 <Card
-                  className={`p-6 cursor-pointer transition-all hover:scale-105 ${
+                  className={`p-6 cursor-pointer hover:scale-102 transition-all bg-slate-900/80 ${
                     selectedCategory === category.name
                       ? "border-2 border-white"
-                      : "border-purple-300/20"
+                      : "border border-purple-300/20"
                   }`}
                   onClick={() => handleSelectCategory(category.name)}
                 >
@@ -314,26 +244,21 @@ export function CategorySelection({
                         {category.name[0]}
                       </span>
                     </div>
-                    {/* Improved category name display */}
                     <h3 className="text-xl font-bold text-white bg-black/20 p-2 rounded-lg">
                       {category.name}
                     </h3>
                   </div>
                 </Card>
-              </motion.div>
+              </div>
             );
           })}
-        </motion.div>
+        </div>
       ) : (
         <div className="flex justify-center">
-          <Card className="p-8 text-center backdrop-blur-md border-purple-300/20 max-w-md">
-            <motion.div
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="flex justify-center mb-4"
-            >
+          <Card className="p-8 text-center bg-slate-800 border border-purple-500/20 max-w-md">
+            <div className="flex justify-center mb-4">
               <div className="w-12 h-12 border-4 border-t-purple-500 border-purple-300 rounded-full animate-spin" />
-            </motion.div>
+            </div>
             <p className="text-xl text-purple-200">
               Waiting for {currentDecider?.nickname || "the decider"} to
               select...

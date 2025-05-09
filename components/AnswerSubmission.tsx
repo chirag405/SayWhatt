@@ -7,8 +7,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { GradientButton } from "@/components/ui/gradient-button";
 import Sparkles from "@/components/ui/Sparkles";
 import { GlowingText } from "@/components/ui/glowing-text";
-import { Brain } from "lucide-react";
+import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
 import { Card } from "./ui/card";
+import {
+  Brain,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  SendHorizonal,
+} from "lucide-react";
 
 interface AnswerSubmissionProps {
   turnId: string;
@@ -155,78 +162,38 @@ export function AnswerSubmission({
   // If we're showing the AI processing screen
   if (showAIProcessing) {
     return (
-      <div className="fixed inset-0 flex flex-col items-center justify-center bg-slate-900/80 backdrop-blur-md z-50">
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5 }}
-          className="text-center p-8"
-        >
-          <motion.div
-            className="mx-auto mb-6 relative"
-            animate={{
-              rotate: 360,
-              scale: [1, 1.1, 1],
-            }}
-            transition={{
-              rotate: { duration: 5, repeat: Infinity, ease: "linear" },
-              scale: { duration: 2, repeat: Infinity, ease: "easeInOut" },
-            }}
-          >
-            <div className="w-20 h-20 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center">
-              <Brain className="w-10 h-10 text-white" />
+      <div className="flex items-center justify-center h-full flex-1">
+        <div className="bg-slate-900/70 border border-purple-500/20 rounded-xl p-6 md:p-8 w-full max-w-lg text-center">
+          <div className="mx-auto mb-8 relative">
+            <div className="absolute -inset-10 bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-full blur-3xl"></div>
+            <div className="w-24 h-24 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 flex items-center justify-center relative z-10 mx-auto">
+              <Brain className="w-12 h-12 text-white" />
             </div>
-            <div className="absolute -inset-2 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full blur opacity-40"></div>
-          </motion.div>
+          </div>
 
           <Sparkles>
-            <GlowingText className="text-2xl font-bold mb-4">
-              AI is Processing Answers
-            </GlowingText>
+            <div className="text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-blue-300">
+              AI Neural Processing
+            </div>
           </Sparkles>
 
-          <p className="text-purple-200 mb-8 max-w-md">
-            Our AI is analyzing all submissions for creativity and humor. Get
-            ready for the voting phase!
+          <p className="text-purple-200 mb-8 max-w-md mx-auto">
+            Our AI is analyzing all submissions for creativity and humor.
+            Prepare for the voting phase!
           </p>
 
-          <motion.div
-            className="flex space-x-2 justify-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            <motion.div
-              className="w-3 h-3 bg-purple-500 rounded-full"
-              animate={{ y: [-5, 0, -5] }}
-              transition={{
-                duration: 0.6,
-                repeat: Infinity,
-                repeatType: "reverse",
-              }}
-            />
-            <motion.div
-              className="w-3 h-3 bg-blue-500 rounded-full"
-              animate={{ y: [-5, 0, -5] }}
-              transition={{
-                duration: 0.6,
-                delay: 0.2,
-                repeat: Infinity,
-                repeatType: "reverse",
-              }}
-            />
-            <motion.div
-              className="w-3 h-3 bg-indigo-500 rounded-full"
-              animate={{ y: [-5, 0, -5] }}
-              transition={{
-                duration: 0.6,
-                delay: 0.4,
-                repeat: Infinity,
-                repeatType: "reverse",
-              }}
-            />
-          </motion.div>
-        </motion.div>
+          <div className="flex justify-center space-x-3">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="w-3 h-3 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 animate-pulse"
+                style={{
+                  animationDelay: `${i * 0.2}s`,
+                }}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     );
   }
@@ -234,243 +201,145 @@ export function AnswerSubmission({
   // If there's no scenario yet, show a waiting state
   if (!scenario) {
     return (
-      <div className="flex flex-col items-center justify-center h-full">
-        <motion.div
-          animate={{ scale: [1, 1.05, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="mb-6"
-        >
-          <div className="w-12 h-12 border-4 border-t-purple-500 border-purple-300 rounded-full animate-spin" />
-        </motion.div>
-
-        {currentDecider && (
-          <Card className="mb-6 backdrop-blur-md border-purple-300/20 max-w-md">
-            <div className="p-6 text-center">
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-xl mb-2 text-white"
-              >
-                <span className="font-bold text-purple-300">
-                  {currentDecider.nickname}
-                </span>{" "}
-                is choosing a scenario
-              </motion.p>
-
-              <motion.p
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.3 }}
-                className="text-sm text-gray-300"
-              >
-                Please wait while the decider selects a scenario for this
-                round...
-              </motion.p>
-            </div>
-          </Card>
-        )}
-
-        {!currentDecider && (
-          <span className="text-lg text-purple-300">Loading scenario...</span>
-        )}
+      <div className="flex flex-col items-center justify-center h-full flex-1">
+        <div className="text-center mb-4">
+          <Sparkles>
+            <GlowingText className="text-2xl md:text-3xl font-bold text-white">
+              Waiting for scenario...
+            </GlowingText>
+          </Sparkles>
+        </div>
+        <div className="flex flex-col items-center bg-slate-900/40 border border-purple-500/20 rounded-xl p-6">
+          <div className="w-12 h-12 border-4 border-t-purple-500 border-purple-300/30 rounded-full animate-spin mx-auto mb-4" />
+          <span className="text-lg text-purple-300">
+            Waiting for the decider to select a scenario.
+          </span>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center h-full">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-3xl"
-      >
-        <Sparkles>
-          <GlowingText className="text-3xl font-bold mb-6 text-center">
-            Submit Your Answer
-          </GlowingText>
-        </Sparkles>
+    <div className="h-full w-full">
+      <div className="bg-slate-900/60 border border-purple-500/20 rounded-xl p-6 md:p-8 h-full flex flex-col">
+        <div className="h-full flex flex-col">
+          <div className="mb-6">
+            <Sparkles>
+              <GlowingText className="text-2xl md:text-3xl font-bold text-center mb-2">
+                Submit Your Answer
+              </GlowingText>
+            </Sparkles>
+            <div className="flex items-center justify-between mt-2 mb-4">
+              <div className="inline-flex items-center px-4 py-1 bg-slate-800/60 rounded-full border border-purple-500/20 text-purple-300 text-sm">
+                <span className="font-medium">
+                  {submissionCount().submittedCount}
+                </span>
+                <span className="text-gray-400"> / </span>
+                <span>{submissionCount().expectedCount}</span>
+                <span className="ml-2 text-gray-400">submitted</span>
+              </div>
+              <div className="inline-flex items-center px-3 py-1 bg-black/30 rounded-full border border-purple-500/20 text-white text-sm">
+                <Clock className="w-4 h-4 mr-1 text-purple-300" />
+                {timerEnd
+                  ? Math.max(
+                      0,
+                      Math.floor((timerEnd.getTime() - Date.now()) / 1000)
+                    ) + "s"
+                  : timeLimit + "s"}
+              </div>
+            </div>
+          </div>
 
-        {/* Enhanced Scenario Card */}
-        <Card className="mb-8 backdrop-blur-md border-purple-400/30 shadow-lg shadow-purple-500/20">
-          <div className="relative overflow-hidden">
-            {/* Animated gradient background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-900/50 to-blue-900/50 animate-gradient-slow" />
-
-            {/* Scenario Content */}
-            <div className="p-8 relative z-10">
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-                className="flex items-center mb-3"
-              >
-                <div className="h-4 w-4 rounded-full bg-purple-500 mr-2 pulse-animation"></div>
-                <h3 className="text-lg font-medium text-purple-300">
-                  Scenario
-                </h3>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="bg-slate-900/70 backdrop-blur-md p-5 rounded-lg border border-purple-500/30 shadow-inner shadow-purple-600/10"
-              >
-                <p className="text-xl text-white font-medium leading-relaxed">
-                  {scenario.scenario_text}
-                </p>
-              </motion.div>
-
+          {/* Scenario Card */}
+          <div className="mb-6">
+            <div className="bg-slate-900/70 p-5 rounded-lg border border-purple-500/30 shadow-lg">
+              <h3 className="text-lg font-medium bg-clip-text text-transparent bg-gradient-to-r from-purple-300 to-pink-300 mb-2">
+                Scenario
+              </h3>
+              <p className="text-xl text-white font-medium leading-relaxed">
+                {scenario.scenario_text}
+              </p>
               {currentTurn?.context && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.4 }}
-                  className="mt-4 p-4 bg-blue-900/30 backdrop-blur-sm rounded-lg border border-blue-500/30"
-                >
-                  <div className="flex items-center mb-2">
-                    <svg
-                      className="w-5 h-5 text-blue-400 mr-2"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    <span className="font-medium text-blue-300">Context</span>
-                  </div>
-                  <p className="text-blue-100">{currentTurn.context}</p>
-                </motion.div>
+                <div className="mt-4 p-3 bg-blue-900/30 rounded-lg border border-blue-500/30">
+                  <span className="font-medium text-blue-300">Context:</span>
+                  <span className="ml-2 text-blue-100">
+                    {currentTurn.context}
+                  </span>
+                </div>
               )}
             </div>
           </div>
-        </Card>
 
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="bg-red-500/20 border border-red-500/30 text-red-300 p-3 rounded-lg mb-4"
-            >
-              {error}
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <div className="w-full">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-          >
-            <div className="relative group">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-lg blur opacity-40 group-hover:opacity-70 transition duration-300"></div>
+          {/* Answer Input */}
+          <div className="flex-1">
+            <div className="relative group h-full flex flex-col">
               <textarea
-                className="relative w-full p-4 rounded-lg bg-slate-800/90 border border-purple-500/30 text-white placeholder-gray-400 focus:border-purple-400 focus:ring focus:ring-purple-500/20 transition-all mb-4"
-                placeholder="Write your answer here..."
-                rows={5}
+                className="relative w-full h-full min-h-[120px] p-4 rounded-lg bg-slate-800/90 border border-purple-500/30 text-white placeholder-gray-400 focus:border-purple-400 focus:outline-none focus:ring focus:ring-purple-500/30 transition-all resize-none mb-4"
+                placeholder="Write your creative answer here..."
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
                 disabled={hasSubmitted || isSubmitting}
               />
+              <div className="flex flex-col gap-2">
+                <GradientButton
+                  onClick={handleSubmitAnswer}
+                  disabled={!answer.trim() || hasSubmitted || isSubmitting}
+                  className="w-full py-3 font-medium flex items-center justify-center gap-2"
+                  gradientFrom="from-purple-600"
+                  gradientTo="to-blue-600"
+                >
+                  {hasSubmitted ? (
+                    <>
+                      <CheckCircle2 className="w-5 h-5" />
+                      <span>Answer Submitted</span>
+                    </>
+                  ) : isSubmitting ? (
+                    <>
+                      <div className="w-5 h-5 border-3 border-t-white border-white/30 rounded-full animate-spin" />
+                      <span className="animate-pulse">Submitting...</span>
+                    </>
+                  ) : (
+                    <>
+                      <SendHorizonal className="w-5 h-5" />
+                      <span>Submit Answer</span>
+                    </>
+                  )}
+                </GradientButton>
+                <AnimatePresence>
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      className="bg-red-500/20 border border-red-500/30 text-red-300 p-3 rounded-lg mt-2 flex items-center gap-2"
+                    >
+                      <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                      <span>{error}</span>
+                    </motion.div>
+                  )}
+                  {hasSubmitted && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, height: 0 }}
+                      animate={{ opacity: 1, y: 0, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="mt-2"
+                    >
+                      <div className="bg-green-900/20 border border-green-500/30 text-green-300 p-3 rounded-lg flex items-center gap-2">
+                        <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0" />
+                        <p>
+                          Your answer has been submitted! Waiting for other
+                          players...
+                        </p>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-          >
-            <GradientButton
-              onClick={handleSubmitAnswer}
-              disabled={!answer.trim() || hasSubmitted || isSubmitting}
-              className="w-full py-3 font-medium"
-              fromColor="from-purple-600"
-              toColor="to-blue-600"
-            >
-              {hasSubmitted ? (
-                <>
-                  <svg
-                    className="w-5 h-5 mr-2 inline"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
-                  Answer Submitted
-                </>
-              ) : isSubmitting ? (
-                <>
-                  <motion.span
-                    animate={{ opacity: [0.4, 1, 0.4] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                  >
-                    Submitting...
-                  </motion.span>
-                </>
-              ) : (
-                "Submit Answer"
-              )}
-            </GradientButton>
-          </motion.div>
-
-          <AnimatePresence>
-            {hasSubmitted && (
-              <motion.p
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="text-center text-green-400 mt-3"
-              >
-                Your answer has been submitted! Waiting for other players...
-              </motion.p>
-            )}
-          </AnimatePresence>
-        </div>
-
-        {isDecider && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7 }}
-            className="mt-6 p-4 bg-amber-800/20 border-l-4 border-amber-500 text-amber-300 rounded"
-          >
-            <p className="font-semibold">
-              You're the decider for this turn, but you can still submit your
-              own answer!
-            </p>
-          </motion.div>
-        )}
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.7 }}
-          className="mt-4 text-center"
-        >
-          <div className="inline-flex items-center px-4 py-2 bg-slate-800/50 backdrop-blur-sm rounded-full border border-purple-500/20">
-            <span className="text-purple-300">
-              <span className="font-medium">
-                {submissionCount().submittedCount}
-              </span>
-              <span className="text-gray-400"> / </span>
-              <span>{submissionCount().expectedCount}</span>
-              <span className="ml-2 text-gray-400">submissions</span>
-            </span>
           </div>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -10,6 +10,7 @@ export function HoverBorderGradient({
   children,
   containerClassName,
   className,
+  gradientClassName,
   as: Tag = "button",
   duration = 1,
   clockwise = true,
@@ -19,6 +20,7 @@ export function HoverBorderGradient({
     as?: React.ElementType;
     containerClassName?: string;
     className?: string;
+    gradientClassName?: string; // Added gradientClassName prop
     duration?: number;
     clockwise?: boolean;
   } & React.HTMLAttributes<HTMLElement>
@@ -44,8 +46,10 @@ export function HoverBorderGradient({
       "radial-gradient(16.2% 41.199999999999996% at 100% 50%, hsl(0, 0%, 100%) 0%, rgba(255, 255, 255, 0) 100%)",
   };
 
-  const highlight =
-    "radial-gradient(75% 181.15942028985506% at 50% 50%, #3275F8 0%, rgba(255, 255, 255, 0) 100%)";
+  // Use provided gradient or fallback to default
+  const highlight = gradientClassName
+    ? undefined // We'll apply gradient via className instead
+    : "radial-gradient(75% 181.15942028985506% at 50% 50%, #3275F8 0%, rgba(255, 255, 255, 0) 100%)";
 
   useEffect(() => {
     if (!hovered) {
@@ -55,6 +59,7 @@ export function HoverBorderGradient({
       return () => clearInterval(interval);
     }
   }, [hovered]);
+
   return (
     <Tag
       onMouseEnter={(event: React.MouseEvent<HTMLDivElement>) => {
@@ -62,7 +67,7 @@ export function HoverBorderGradient({
       }}
       onMouseLeave={() => setHovered(false)}
       className={cn(
-        "relative flex rounded-full border  content-center bg-black/20 hover:bg-black/10 transition duration-500 dark:bg-white/20 items-center flex-col flex-nowrap gap-10 h-min justify-center overflow-visible p-px decoration-clone w-fit",
+        "relative flex rounded-full border content-center bg-black/20 hover:bg-black/10 transition duration-500 dark:bg-white/20 items-center flex-col flex-nowrap gap-10 h-min justify-center overflow-visible p-px decoration-clone w-fit",
         containerClassName
       )}
       {...props}
@@ -77,7 +82,8 @@ export function HoverBorderGradient({
       </div>
       <motion.div
         className={cn(
-          "flex-none inset-0 overflow-hidden absolute z-0 rounded-[inherit]"
+          "flex-none inset-0 overflow-hidden absolute z-0 rounded-[inherit]",
+          gradientClassName // Apply custom gradient class if provided
         )}
         style={{
           filter: "blur(2px)",
@@ -85,11 +91,16 @@ export function HoverBorderGradient({
           width: "100%",
           height: "100%",
         }}
-        initial={{ background: movingMap[direction] }}
+        initial={{
+          background: gradientClassName ? undefined : movingMap[direction],
+        }}
         animate={{
-          background: hovered
-            ? [movingMap[direction], highlight]
-            : movingMap[direction],
+          background:
+            !gradientClassName && hovered
+              ? [movingMap[direction], highlight]
+              : gradientClassName
+                ? undefined
+                : movingMap[direction],
         }}
         transition={{ ease: "linear", duration: duration ?? 1 }}
       />

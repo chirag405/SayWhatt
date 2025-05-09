@@ -18,6 +18,7 @@ type ParticlesProps = {
   speed?: number;
   particleColor?: string;
   particleDensity?: number;
+  density?: number; // New parameter
   children?: React.ReactNode;
 };
 
@@ -31,9 +32,13 @@ const Sparkles = (props: ParticlesProps) => {
     speed,
     particleColor,
     particleDensity,
+    density, // Added to destructuring
     children,
   } = props;
   const [init, setInit] = useState(false);
+  const [containerLoaded, setContainerLoaded] = useState(false);
+  const controls = useAnimation();
+
   useEffect(() => {
     initParticlesEngine(async (engine) => {
       await loadSlim(engine);
@@ -41,10 +46,9 @@ const Sparkles = (props: ParticlesProps) => {
       setInit(true);
     });
   }, []);
-  const controls = useAnimation();
 
-  const particlesLoaded = async (container?: Container) => {
-    if (container) {
+  useEffect(() => {
+    if (containerLoaded) {
       controls.start({
         opacity: 1,
         transition: {
@@ -52,7 +56,16 @@ const Sparkles = (props: ParticlesProps) => {
         },
       });
     }
+  }, [containerLoaded, controls]);
+
+  const particlesLoaded = async (container?: Container) => {
+    if (container) {
+      setContainerLoaded(true);
+    }
   };
+
+  // Use either density (new) or particleDensity (existing) or default to 120
+  const finalDensity = density || particleDensity || 120;
 
   const generatedId = useId();
   return (
@@ -237,7 +250,7 @@ const Sparkles = (props: ParticlesProps) => {
                   mode: "delete",
                   value: 0,
                 },
-                value: particleDensity || 120,
+                value: finalDensity,
               },
               opacity: {
                 value: {

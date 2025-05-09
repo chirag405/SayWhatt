@@ -271,12 +271,10 @@ export function VotingPhase({
   if (turnAnswers.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
-        <motion.div
-          animate={{ scale: [1, 1.05, 1] }}
-          transition={{ duration: 2, repeat: Infinity }}
-        >
-          <div className="w-16 h-16 border-4 border-t-purple-500 border-purple-300 rounded-full animate-spin" />
-        </motion.div>
+        <div className="bg-slate-900/80 border border-purple-500/20 rounded-lg p-8 text-center">
+          <div className="w-16 h-16 border-4 border-t-purple-500 border-purple-300 rounded-full animate-spin mx-auto mb-6" />
+          <p className="text-xl text-purple-200">Loading answers...</p>
+        </div>
       </div>
     );
   }
@@ -297,21 +295,19 @@ export function VotingPhase({
       : `Continue to Next Turn (${timeLeft}s)`;
 
   return (
-    <div className="flex flex-col items-center justify-center h-full">
-      <Sparkles>
-        <GlowingText className="text-2xl font-bold mb-6">
-          Voting Phase
-        </GlowingText>
-      </Sparkles>
+    <div className="flex flex-col items-center justify-center h-full w-full px-2 md:px-4">
+      <div className="text-center mb-4">
+        <Sparkles>
+          <GlowingText className="text-2xl md:text-3xl font-bold">
+            Voting Phase
+          </GlowingText>
+        </Sparkles>
+      </div>
 
       {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="text-red-400 bg-red-900/20 px-4 py-2 rounded-lg mb-4 border border-red-700/30"
-        >
+        <div className="text-red-400 bg-red-900/20 px-4 py-2 rounded-lg mb-4 border border-red-700/30 max-w-lg w-full text-center">
           {error}
-        </motion.div>
+        </div>
       )}
 
       <div className="w-full max-w-3xl">
@@ -323,24 +319,26 @@ export function VotingPhase({
             exit={{ opacity: 0, x: -50 }}
             transition={{ duration: 0.3 }}
           >
-            <Card className="p-6 mb-6 border-purple-500/20">
+            <Card className="p-6 mb-6 border border-purple-500/30 bg-slate-900/80 shadow-md">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="text-lg font-semibold text-white">
                   Answer {currentAnswerIndex + 1} of {turnAnswers.length}
                 </h3>
-                <div className="flex items-center text-sm font-medium text-purple-300">
-                  <Clock className="w-4 h-4 mr-1" />
+                <div className="flex items-center px-3 py-1 bg-black/30 rounded-full border border-purple-500/20 text-white text-sm">
+                  <Clock className="w-4 h-4 mr-1 text-purple-300" />
                   <span>{timeLeft}s</span>
                 </div>
               </div>
 
-              <p className="text-xl mb-4 text-white">
-                {currentAnswer.answer_text}
-              </p>
+              <div className="bg-slate-800/50 p-5 rounded-md border border-purple-500/20 mb-4">
+                <p className="text-xl mb-4 text-white">
+                  {currentAnswer.answer_text}
+                </p>
+              </div>
 
               {/* AI Response display */}
               {currentAnswer.ai_response && (
-                <div className="bg-slate-700/50 p-4 rounded-md mb-4 border border-purple-500/20">
+                <div className="bg-purple-900/20 p-4 rounded-md mb-4 border border-purple-500/20">
                   <p className="text-sm text-purple-300 italic mb-1">
                     AI Feedback:
                   </p>
@@ -350,122 +348,97 @@ export function VotingPhase({
 
               {/* Vote count display */}
               <div className="mb-4 text-center">
-                <span className="text-purple-300">
+                <span className="text-purple-300 px-4 py-1 bg-slate-800/50 rounded-full border border-purple-500/20 text-sm font-medium">
                   {votesForCurrentAnswer}{" "}
                   {votesForCurrentAnswer === 1 ? "vote" : "votes"}
                 </span>
               </div>
 
               <div className="flex justify-center space-x-4 mt-6">
-                <motion.button
+                <button
                   onClick={() => handleVote(currentAnswer.id, "up")}
                   disabled={hasVoted[currentAnswer.id] || isLoading}
-                  className={`px-6 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 ${
+                  className={`px-6 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 hover:brightness-110 active:scale-95 ${
                     hasVoted[currentAnswer.id]
                       ? "bg-gradient-to-r from-purple-500 to-purple-600"
                       : ""
                   }`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                 >
                   <div className="flex items-center">
                     <ThumbsUp className="w-5 h-5 mr-2" />
                     {hasVoted[currentAnswer.id] ? "Voted" : "Upvote"}
                   </div>
-                </motion.button>
+                </button>
 
-                <motion.button
+                <button
                   onClick={() => handleVote(currentAnswer.id, "down")}
                   disabled={hasVoted[currentAnswer.id] || isLoading}
-                  className={`px-6 py-2 bg-gradient-to-r from-red-500 to-rose-600 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 ${
+                  className={`px-6 py-2 bg-gradient-to-r from-red-600 to-rose-600 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 hover:brightness-110 active:scale-95 ${
                     hasVoted[currentAnswer.id]
                       ? "bg-gradient-to-r from-purple-500 to-purple-600"
                       : ""
                   }`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
                 >
                   <div className="flex items-center">
                     <ThumbsDown className="w-5 h-5 mr-2" />
                     {hasVoted[currentAnswer.id] ? "Voted" : "Downvote"}
                   </div>
-                </motion.button>
+                </button>
               </div>
             </Card>
           </motion.div>
         </AnimatePresence>
 
         {/* Navigation controls */}
-        <div className="flex justify-between mt-4">
-          {/* Fixed Previous button - disables only if at first slide or not host */}
-          <motion.button
+        <div className="flex justify-between items-center mt-4 gap-2">
+          <button
             onClick={handlePrevious}
             disabled={!isHost || currentAnswerIndex === 0}
             className={`flex items-center px-4 py-2 rounded-lg transition-colors duration-200 ${
               isHost && currentAnswerIndex > 0
-                ? "bg-slate-700/50 border border-purple-500/20 hover:bg-slate-600/50"
-                : "bg-slate-800/30 border border-purple-500/10 opacity-50 cursor-not-allowed"
+                ? "bg-slate-700/50 border border-purple-500/20 hover:bg-slate-600/50 text-white"
+                : "bg-slate-800/30 border border-purple-500/10 opacity-50 cursor-not-allowed text-slate-400"
             }`}
-            whileHover={isHost && currentAnswerIndex > 0 ? { scale: 1.05 } : {}}
-            whileTap={isHost && currentAnswerIndex > 0 ? { scale: 0.95 } : {}}
           >
             <ChevronLeft className="w-5 h-5 mr-1" /> Previous
-          </motion.button>
+          </button>
 
-          <div className="flex items-center text-purple-300">
-            <span className="px-3 py-1 bg-slate-700/50 rounded-lg border border-purple-500/20">
+          <div className="flex items-center">
+            <span className="px-3 py-1 bg-slate-700/50 rounded-lg border border-purple-500/20 text-purple-300 font-medium">
               {currentAnswerIndex + 1} / {turnAnswers.length}
             </span>
           </div>
 
-          {/* Fixed Next button - disables only if at last slide or not host */}
-          <motion.button
+          <button
             onClick={handleNext}
             disabled={!isHost || currentAnswerIndex === turnAnswers.length - 1}
             className={`flex items-center px-4 py-2 rounded-lg transition-colors duration-200 ${
               isHost && currentAnswerIndex < turnAnswers.length - 1
-                ? "bg-slate-700/50 border border-purple-500/20 hover:bg-slate-600/50"
-                : "bg-slate-800/30 border border-purple-500/10 opacity-50 cursor-not-allowed"
+                ? "bg-slate-700/50 border border-purple-500/20 hover:bg-slate-600/50 text-white"
+                : "bg-slate-800/30 border border-purple-500/10 opacity-50 cursor-not-allowed text-slate-400"
             }`}
-            whileHover={
-              isHost && currentAnswerIndex < turnAnswers.length - 1
-                ? { scale: 1.05 }
-                : {}
-            }
-            whileTap={
-              isHost && currentAnswerIndex < turnAnswers.length - 1
-                ? { scale: 0.95 }
-                : {}
-            }
           >
             Next <ChevronRight className="w-5 h-5 ml-1" />
-          </motion.button>
+          </button>
         </div>
 
         {/* Continue button for host */}
         {isHost && (
-          <motion.div
-            className="mt-8 text-center"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <GradientButton
+          <div className="mt-8 text-center">
+            <button
               onClick={handleFinishVoting}
               disabled={
                 isLoading || currentAnswerIndex !== turnAnswers.length - 1
               }
-              className={`px-6 py-3 ${
+              className={`px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-medium rounded-lg transition-all duration-200 hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:hover:brightness-100 disabled:active:scale-100 ${
                 currentAnswerIndex !== turnAnswers.length - 1
                   ? "opacity-50"
                   : ""
               }`}
-              gradientFrom="from-blue-500"
-              gradientTo="to-purple-600"
             >
               {continueButtonText}
-            </GradientButton>
-          </motion.div>
+            </button>
+          </div>
         )}
       </div>
     </div>

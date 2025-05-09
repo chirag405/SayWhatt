@@ -90,8 +90,9 @@ export default function LobbyScreen() {
     // Ensure sounds are preloaded first
     preloadSounds();
 
-    // Don't check or start lobby music - it should already be playing from the home page
-    // This avoids duplicate sound instances
+    // Start lobby music independently based on user settings
+    // This allows the lobby music to be controlled by the lobby page settings toggle
+    checkAndStartLobbyMusic();
 
     return () => {
       // Only stop lobby music when actually leaving the app

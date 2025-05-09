@@ -203,7 +203,11 @@ export const CardItem = ({
 export const useMouseEnter = () => {
   const context = useContext(MouseEnterContext);
   if (context === undefined) {
-    throw new Error("useMouseEnter must be used within a MouseEnterProvider");
+    // Return a default value instead of throwing an error
+    return [false, () => {}] as [
+      boolean,
+      React.Dispatch<React.SetStateAction<boolean>>,
+    ];
   }
   return context;
 };
