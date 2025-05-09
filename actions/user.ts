@@ -118,33 +118,75 @@ export async function getPlayerById(
   }
 }
 // In your deletePlayer action (or wherever you handle player deletion)
+/**
+ * Deletes a player from the game and broadcasts their departure information
+ * @param playerId The ID of the player to delete
+ * @returns Object indicating success or failure with optional error message
+ */
 export const deletePlayer = async (playerId: string) => {
   const supabase = await createClient();
 
-  // 1. First get the player's room_id before deleting
-  const { data: player } = await supabase
-    .from("players")
-    .select("room_id")
-    .eq("id", playerId)
-    .single();
+  try {
+    // Get player details before deletion
+    const { data: player } = await supabase
+      .from("players")
+      .select("id, room_id, nickname, is_host")
+      .eq("id", playerId)
+      .single();
 
-  if (!player) return { success: false, error: "Player not found" };
+    if (!player) return { success: false, error: "Player not found" };
 
-  // 2. Perform the actual deletion
-  const { error } = await supabase.from("players").delete().eq("id", playerId);
+    // Check if this player is a current decider
+    let isDecider = false;
+    const { data: currentRound } = await supabase
+      .from("rounds")
+      .select("id")
+      .eq("room_id", player.room_id)
+      .eq("is_complete", false)
+      .limit(1);
 
-  if (error) return { success: false, error: error.message };
-  // const { room } = await getRoomById(player.room_id);
-  // const roomHost = room.host_id;
+    if (currentRound && currentRound.length > 0) {
+      const { data: currentTurn } = await supabase
+        .from("turns")
+        .select("decider_id")
+        .eq("round_id", currentRound[0].id)
+        .order("turn_number", { ascending: false })
+        .limit(1);
 
-  // 3. Broadcast a custom event to all clients in the room
-  await supabase.channel(`room:${player.room_id}`).send({
-    type: "broadcast",
-    event: "PLAYER_DELETED",
-    payload: { playerId },
-  });
+      // Fix the type error by checking if currentTurn exists and has elements
+      if (currentTurn && currentTurn.length > 0) {
+        isDecider = currentTurn[0].decider_id === playerId;
+      }
+    }
 
-  return { success: true };
+    // Perform the deletion
+    const { error } = await supabase
+      .from("players")
+      .delete()
+      .eq("id", playerId);
+
+    if (error) return { success: false, error: error.message };
+
+    // Broadcast player departure information
+    await supabase.channel(`players-departure:${player.room_id}`).send({
+      type: "broadcast",
+      event: "PLAYER_DELETED",
+      payload: {
+        playerId,
+        playerName: player.nickname,
+        wasHost: player.is_host,
+        wasDecider: isDecider,
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error in deletePlayer:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
+  }
 };
 
 export async function joinRoom({

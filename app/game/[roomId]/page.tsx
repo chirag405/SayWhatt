@@ -53,6 +53,7 @@ import {
   Zap,
   User,
 } from "lucide-react";
+import { toast } from "sonner";
 
 export default function GameScreen() {
   const router = useRouter();
@@ -64,6 +65,7 @@ export default function GameScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentScenario, setCurrentScenario] = useState<Scenario | null>(null);
+  const [isExiting, setIsExiting] = useState(false);
   const [subscriptionsActive, setSubscriptionsActive] = useState<{
     main: boolean;
     turn: boolean;
@@ -91,6 +93,8 @@ export default function GameScreen() {
     isRoundVotingPhase,
     currentRound,
     subscribeToRounds,
+    deletePlayer,
+    resetState,
   } = useUserRoomStore();
   const {
     subscribeToTurns,
@@ -99,7 +103,6 @@ export default function GameScreen() {
     subscribeToAnswers,
     subscribeToVotes,
     subscribeToScenarios,
-    // disconnectedPlayers,s
     timerEnd,
     getScenarioById: storeGetScenarioById,
   } = useGameStore();
@@ -236,6 +239,57 @@ export default function GameScreen() {
       prevTurnStateRef.current = "completed";
     }
   }, [currentTurn?.status, roundNumber, gameCompleted]);
+
+  // Subscribe to player departure events
+  useEffect(() => {
+    if (!roomId || !currentUser?.id) return;
+
+    const playerDepartureChannel = supabase.channel(
+      `players-departure:${roomId}`
+    );
+
+    playerDepartureChannel
+      .on("broadcast", { event: "PLAYER_DELETED" }, (payload) => {
+        const departedPlayerId = payload.payload.playerId;
+        const departedPlayerName = payload.payload.playerName || "A player";
+        const wasDecider = payload.payload.wasDecider;
+        const wasHost = payload.payload.wasHost;
+
+        // Show notification to users
+        let message = `${departedPlayerName} has left the game.`;
+        let variant = "default";
+
+        if (wasDecider) {
+          message = `${departedPlayerName} (Decider) has left the game. A new decider has been assigned.`;
+          variant = "destructive";
+          // Force refresh game state after a brief delay
+          setTimeout(() => {
+            fetchRoomById(roomId);
+          }, 1000);
+        } else if (wasHost) {
+          message = `${departedPlayerName} (Host) has left the game. A new host has been assigned.`;
+          variant = "warning";
+        }
+
+        // Show toast notification
+        toast(message, {
+          style: {
+            backgroundColor:
+              variant === "destructive"
+                ? "#f87171"
+                : variant === "warning"
+                  ? "#fbbf24"
+                  : "#374151",
+            color: "#fff",
+          },
+        });
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(playerDepartureChannel);
+    };
+  }, [roomId, currentUser?.id, fetchRoomById]);
 
   // Data initialization and subscriptions
   useEffect(() => {
@@ -404,6 +458,19 @@ export default function GameScreen() {
             </GlowingText>
           </div>
         );
+    }
+  };
+
+  const handleExit = async () => {
+    if (isExiting || !currentUser?.id || !roomId) return;
+    setIsExiting(true);
+    try {
+      await deletePlayer(currentUser.id);
+      resetState();
+      router.push("/");
+    } catch (error) {
+      console.error("[GameScreen] Error during exit:", error);
+      setIsExiting(false);
     }
   };
 
@@ -602,7 +669,7 @@ export default function GameScreen() {
 
                 <CardItem translateZ={25} className="ml-auto">
                   <GradientButton
-                    onClick={() => router.push("/")}
+                    onClick={handleExit}
                     className="flex items-center gap-1.5 text-sm py-1 px-2"
                     gradientFrom="from-gray-600"
                     gradientTo="to-slate-700"

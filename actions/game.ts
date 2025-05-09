@@ -645,6 +645,16 @@ export async function nextTurn(
       throw new Error("No active players found");
     }
 
+    // If only one player is left, end the game and declare them the winner
+    if (players.length === 1) {
+      console.log("Only one player left, ending game with them as winner");
+      await supabase
+        .from("rooms")
+        .update({ game_status: "completed" })
+        .eq("id", round.room_id);
+      return { gameEnded: true };
+    }
+
     // Get decider history for this round
     const { data: deciderHistory } = await supabase
       .from("decider_history")

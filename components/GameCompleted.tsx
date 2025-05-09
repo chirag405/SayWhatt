@@ -30,8 +30,10 @@ interface GameCompletedProps {
 export function GameCompleted({ players }: GameCompletedProps) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
-  const [showResults, setShowResults] = useState(false);
-  const [drumRollComplete, setDrumRollComplete] = useState(false);
+  const [showResults, setShowResults] = useState(true);
+  const [drumRollComplete, setDrumRollComplete] = useState(
+    players.length === 1
+  );
 
   // Sort players by points
   const sortedPlayers = [...players].sort(
@@ -39,18 +41,10 @@ export function GameCompleted({ players }: GameCompletedProps) {
   );
   const winner = sortedPlayers[0];
 
-  // Set up drum roll timer and auto-reset timer
+  // Set up sound and auto-reset timer (but no delay for showing results)
   useEffect(() => {
-    // Play drum roll sound on initial load
+    // Play sound on initial load
     playSound(SOUND_PATHS.resultsReveal, "results");
-
-    // Show results after 6 seconds of drum roll
-    const resultsTimer = setTimeout(() => {
-      setDrumRollComplete(true);
-      setTimeout(() => {
-        setShowResults(true);
-      }, 300); // Small delay before triggering bounce animation
-    }, 6000);
 
     // Auto-reset timer (1 minute)
     const resetTimer = setTimeout(() => {
@@ -58,7 +52,6 @@ export function GameCompleted({ players }: GameCompletedProps) {
     }, 60000); // 60 seconds = 1 minute
 
     return () => {
-      clearTimeout(resultsTimer);
       clearTimeout(resetTimer);
     };
   }, []);

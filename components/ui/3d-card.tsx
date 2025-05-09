@@ -19,7 +19,7 @@ export const CardContainer = ({
   className,
   containerClassName,
   perspective = 1000,
-  rotationIntensity = 15, // New prop to control rotation intensity
+  rotationIntensity = 3, // Reduced from 15 to 3 for more subtle movement
   glareIntensity = 0.2, // New prop for glare effect intensity
   rotationEnabled = true, // New prop to enable/disable rotation
 }: {
