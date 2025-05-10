@@ -238,7 +238,27 @@ export default function GameScreen() {
       playSound(SOUND_PATHS.resultsReveal, "results");
       prevTurnStateRef.current = "completed";
     }
-  }, [currentTurn?.status, roundNumber, gameCompleted]);
+
+    // Check if only one player remains - this should trigger game completion
+    if (currentGame?.players.length === 1 && !gameCompleted) {
+      console.log("Only one player left, ending game");
+      // Force room status to completed if not already done by database trigger
+      const updateRoomToCompleted = async () => {
+        const supabase = createClient();
+        await supabase
+          .from("rooms")
+          .update({ game_status: "completed" })
+          .eq("id", roomId);
+      };
+      updateRoomToCompleted();
+    }
+  }, [
+    currentTurn?.status,
+    roundNumber,
+    gameCompleted,
+    currentGame?.players.length,
+    roomId,
+  ]);
 
   // Subscribe to player departure events
   useEffect(() => {
@@ -467,7 +487,8 @@ export default function GameScreen() {
     try {
       await deletePlayer(currentUser.id);
       resetState();
-      router.push("/");
+      // Use window.location for a hard redirect to ensure clean state
+      window.location.href = "/";
     } catch (error) {
       console.error("[GameScreen] Error during exit:", error);
       setIsExiting(false);

@@ -31,17 +31,24 @@ export function GameCompleted({ players }: GameCompletedProps) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
   const [showResults, setShowResults] = useState(true);
+
+  // Fix: Ensure each player has point values and handle single player case
+  const playersWithPoints = players.map((player) => ({
+    ...player,
+    total_points: player.total_points ?? 0,
+  }));
+
+  // Set drum roll complete immediately when only one player
   const [drumRollComplete, setDrumRollComplete] = useState(
     players.length === 1
   );
 
   // Sort players by points
-  const sortedPlayers = [...players].sort(
-    (a, b) => (b.total_points ?? 0) - (a.total_points ?? 0)
+  const sortedPlayers = [...playersWithPoints].sort(
+    (a, b) => b.total_points - a.total_points
   );
   const winner = sortedPlayers[0];
 
-  // Set up sound and auto-reset timer (but no delay for showing results)
   useEffect(() => {
     // Play sound on initial load
     playSound(SOUND_PATHS.resultsReveal, "results");

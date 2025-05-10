@@ -253,6 +253,17 @@ player_room_id := OLD.room_id;
     FROM players
     WHERE room_id = player_room_id;
 
+    -- If only one player is left, end the game immediately
+    IF remaining_players = 1 THEN
+        -- Mark the room as completed
+        UPDATE rooms
+        SET game_status = 'completed',
+            updated_at = NOW()
+        WHERE id = player_room_id;
+
+        RETURN OLD;
+    END IF;
+
     -- Update the room's total_rounds based on the number of players
     -- Each player should be decider once per round
     -- This ensures future rounds adjust to player count

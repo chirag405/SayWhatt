@@ -641,38 +641,34 @@ export default function LobbyScreen() {
                             >
                               {player.nickname.charAt(0).toUpperCase()}
                             </CardItem>
-                            <CardItem
-                              translateZ={5}
-                              as="span"
-                              className="font-medium text-slate-100 text-lg"
-                              onClick={() => {}}
-                              whileHover={{}}
-                            >
-                              {player.nickname}
-                            </CardItem>
-                            {player.id === currentRoom.host_id && (
+                            <div className="flex flex-col">
                               <CardItem
-                                translateZ={15}
-                                className="flex items-center bg-amber-600/30 text-amber-300 px-2.5 py-1 text-xs rounded-md border border-amber-500/40 shadow-sm"
+                                translateZ={5}
+                                as="span"
+                                className="font-medium text-slate-100 text-lg"
                                 onClick={() => {}}
                                 whileHover={{}}
                               >
-                                <Crown className="h-3.5 w-3.5 mr-1.5" />
-                                Sector Commander
+                                {player.nickname}
+                                {player.id === currentUser.id && (
+                                  <span className="ml-2 text-blue-300 text-sm bg-blue-800/40 px-2 py-0.5 rounded-md border border-blue-600/50">
+                                    You
+                                  </span>
+                                )}
                               </CardItem>
-                            )}
+                              {player.id === currentRoom.host_id && (
+                                <CardItem
+                                  translateZ={15}
+                                  className="flex items-center bg-amber-600/30 text-amber-300 px-2 py-0.5 mt-1 text-xs rounded-md border border-amber-500/40 shadow-sm w-fit"
+                                  onClick={() => {}}
+                                  whileHover={{}}
+                                >
+                                  <Crown className="h-3 w-3 mr-1" />
+                                  <span>Sector Commander</span>
+                                </CardItem>
+                              )}
+                            </div>
                           </div>
-                          {player.id === currentUser.id && (
-                            <CardItem
-                              translateZ={10}
-                              as="span"
-                              className="text-blue-300 text-sm bg-blue-800/40 px-3 py-1 rounded-md border border-blue-600/50"
-                              onClick={() => {}}
-                              whileHover={{}}
-                            >
-                              You
-                            </CardItem>
-                          )}
                         </CardItem>
                       ))}
                     </AnimatePresence>
@@ -708,7 +704,7 @@ export default function LobbyScreen() {
 
           {/* Mission Briefing Card */}
           <CardContainer perspective={1000}>
-            <CardBody className="bg-slate-900/70 backdrop-blur-lg border border-slate-700/70 rounded-2xl p-6 md:p-8 shadow-xl shadow-teal-500/30 group/card overflow-hidden">
+            <CardBody className="bg-slate-900/70 backdrop-blur-lg border border-slate-700/70 rounded-2xl p-6 md:p-8 shadow-xl shadow-teal-500/30 group/card overflow-visible">
               <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover/card:border-teal-500/60 transition-all duration-500 pointer-events-none animate-pulse-border-teal" />
               <CardItem
                 translateZ={40}
@@ -737,14 +733,15 @@ export default function LobbyScreen() {
                       height: "auto",
                       opacity: 1,
                       marginTop: "1.5rem",
-                    }} // `mt-6`
+                    }}
                     exit={{ height: 0, opacity: 0, marginTop: 0 }}
                     transition={{ duration: 0.4, ease: "easeInOut" }}
-                    className="overflow-hidden"
+                    className="overflow-visible"
                   >
                     <CardItem
                       translateZ={20}
                       className="space-y-4 text-sm text-slate-300 leading-relaxed"
+                      scaleEffect={false}
                     >
                       <p>
                         Welcome, Operative. Your mission, should you choose to
