@@ -9,7 +9,6 @@ import {
   Star,
   Award,
   Gift,
-  Music,
 } from "lucide-react";
 import { Player } from "@/types/types";
 import { motion, AnimatePresence } from "framer-motion";
@@ -30,28 +29,51 @@ interface GameCompletedProps {
 export function GameCompleted({ players }: GameCompletedProps) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
-  const [showResults, setShowResults] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Fix: Ensure each player has point values and handle single player case
-  const playersWithPoints = players.map((player) => ({
+  // Ensure we have at least one player
+  const safePlayersList =
+    players && players.length > 0
+      ? players
+      : [
+          {
+            id: "last-player",
+            nickname: "Last Player Standing",
+            total_points: 100,
+            is_host: true,
+            // Add default values for other required properties
+            room_id: "",
+            created_at: "",
+            updated_at: "",
+            has_been_decider: false,
+          },
+        ];
+
+  // Fix: Ensure each player has point values
+  const playersWithPoints = safePlayersList.map((player) => ({
     ...player,
     total_points: player.total_points ?? 0,
   }));
 
-  // Set drum roll complete immediately when only one player
-  const [drumRollComplete, setDrumRollComplete] = useState(
-    players.length === 1
-  );
+  // Detect single player mode for special handling
+  const isSinglePlayerMode = playersWithPoints.length === 1;
 
   // Sort players by points
   const sortedPlayers = [...playersWithPoints].sort(
     (a, b) => b.total_points - a.total_points
   );
+
+  // Get the winner - in single player case, it's the only player
   const winner = sortedPlayers[0];
 
   useEffect(() => {
     // Play sound on initial load
     playSound(SOUND_PATHS.resultsReveal, "results");
+
+    // Short loading delay to allow animations to complete
+    const loadingTimeout = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
 
     // Auto-reset timer (1 minute)
     const resetTimer = setTimeout(() => {
@@ -59,6 +81,7 @@ export function GameCompleted({ players }: GameCompletedProps) {
     }, 60000); // 60 seconds = 1 minute
 
     return () => {
+      clearTimeout(loadingTimeout);
       clearTimeout(resetTimer);
     };
   }, []);
@@ -68,9 +91,11 @@ export function GameCompleted({ players }: GameCompletedProps) {
   };
 
   const handleShareResults = () => {
-    const results = `🎮 SayWhat Game Results:\n🏆 ${sortedPlayers
-      .map((p, i) => `${i + 1}. ${p.nickname}: ${p.total_points} points`)
-      .join("\n")}`;
+    const results = isSinglePlayerMode
+      ? `🎮 SayWhat Solo Mission Complete!\n🏆 ${winner.nickname}: ${winner.total_points} points`
+      : `🎮 SayWhat Game Results:\n🏆 ${sortedPlayers
+          .map((p, i) => `${i + 1}. ${p.nickname}: ${p.total_points} points`)
+          .join("\n")}`;
 
     navigator.clipboard.writeText(results);
     setCopied(true);
@@ -91,7 +116,7 @@ export function GameCompleted({ players }: GameCompletedProps) {
       opacity: 1,
       transition: {
         staggerChildren: 0.15,
-        delayChildren: 0.3,
+        delayChildren: 0.2,
       },
     },
   };
@@ -103,96 +128,32 @@ export function GameCompleted({ players }: GameCompletedProps) {
 
   // Trophy animation with bounce
   const trophyVariants = {
-    initial: { scale: 0, rotate: -15, y: 20 },
+    initial: { scale: 0.8 },
     animate: {
       scale: 1,
-      rotate: 0,
-      y: 0,
       transition: {
         type: "spring",
         stiffness: 260,
         damping: 20,
-        delay: 0.5,
       },
     },
   };
 
-  // Drum roll animation component
-  const DrumRollAnimation = () => (
+  // Loading animation component
+  const LoadingAnimation = () => (
     <motion.div
-      className="flex flex-col items-center justify-center py-16"
+      className="flex flex-col items-center justify-center py-12"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
     >
-      <div className="relative mb-8">
-        <motion.div
-          className="absolute inset-0 bg-yellow-400 blur-2xl rounded-full opacity-20"
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.2, 0.3, 0.2],
-          }}
-          transition={{
-            duration: 1.5,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-        <motion.div
-          animate={{
-            rotate: 360,
-            scale: [1, 1.1, 1],
-          }}
-          transition={{
-            rotate: { duration: 3, repeat: Infinity, ease: "linear" },
-            scale: { duration: 1, repeat: Infinity, ease: "easeInOut" },
-          }}
-          className="relative z-10"
-        >
-          <Music className="w-20 h-20 text-purple-400" />
-        </motion.div>
-      </div>
+      <div className="w-16 h-16 border-4 border-t-purple-500 border-purple-300 rounded-full animate-spin mb-6" />
 
-      <GlowingText className="text-3xl md:text-4xl font-bold text-center">
-        Calculating Results
+      <GlowingText className="text-2xl font-bold text-center">
+        Generating Results...
       </GlowingText>
-
-      <div className="flex gap-3 mt-8">
-        {[0, 1, 2].map((i) => (
-          <motion.div
-            key={i}
-            className="w-4 h-4 rounded-full bg-gradient-to-r from-amber-400 to-amber-600"
-            animate={{
-              y: [0, -12, 0],
-              scale: [1, 1.2, 1],
-            }}
-            transition={{
-              duration: 0.6,
-              repeat: Infinity,
-              delay: i * 0.2,
-              ease: "easeInOut",
-            }}
-          />
-        ))}
-      </div>
     </motion.div>
   );
-
-  // Bounce animation for results reveal
-  const bounceVariants = {
-    hidden: { opacity: 0, scale: 0.8 },
-    visible: {
-      opacity: 1,
-      scale: 1,
-      transition: {
-        type: "spring",
-        damping: 12,
-        stiffness: 200,
-        mass: 0.8,
-        delay: 0.1,
-      },
-    },
-  };
 
   return (
     <CardContainer perspective={1500} className="w-full max-w-4xl mx-auto">
@@ -200,79 +161,83 @@ export function GameCompleted({ players }: GameCompletedProps) {
         <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover/card:border-amber-500/50 transition-all duration-500 pointer-events-none" />
 
         <AnimatePresence mode="wait">
-          {!drumRollComplete ? (
-            <DrumRollAnimation />
+          {isLoading ? (
+            <LoadingAnimation />
           ) : (
             <motion.div
               className="max-w-2xl mx-auto"
               variants={container}
               initial="hidden"
-              animate={showResults ? "show" : "hidden"}
+              animate="show"
             >
               {/* Victory Banner */}
-              <motion.div
-                variants={item}
-                className="text-center mb-12"
-                initial="hidden"
-                animate={showResults ? "visible" : "hidden"}
-              >
+              <motion.div variants={item} className="text-center mb-12">
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/20 to-transparent blur-3xl rounded-full transform scale-150 -z-10" />
                   <Sparkles>
                     <TextGenerateEffect
-                      words="Mission Complete!"
+                      words={
+                        isSinglePlayerMode
+                          ? "Solo Mission Complete!"
+                          : "Mission Complete!"
+                      }
                       className="text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-br from-yellow-300 via-amber-500 to-yellow-500 pb-2"
                       duration={0.8}
                     />
                   </Sparkles>
                 </div>
                 <p className="text-purple-300 text-lg mt-4">
-                  Your operative excellence has been recorded
+                  {isSinglePlayerMode
+                    ? "Your lone operative skills have been recorded"
+                    : "Your operative excellence has been recorded"}
                 </p>
               </motion.div>
 
               {/* Winner section */}
-              <motion.div
-                variants={item}
-                initial="hidden"
-                animate={showResults ? "visible" : "hidden"}
-              >
+              <motion.div variants={item}>
                 <CardItem translateZ={80}>
                   <HoverBorderGradient
                     containerClassName="w-full rounded-2xl"
                     className="p-6 mb-8 text-center"
-                    gradientClassName="bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500"
+                    gradientClassName={
+                      isSinglePlayerMode
+                        ? "bg-gradient-to-r from-purple-500 via-blue-500 to-indigo-500"
+                        : "bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-500"
+                    }
                   >
                     <div className="flex justify-center mb-6">
                       <motion.div
                         className="relative"
                         variants={trophyVariants}
                         initial="initial"
-                        animate={showResults ? "animate" : "initial"}
+                        animate="animate"
                       >
                         <div className="absolute inset-0 bg-yellow-400 blur-xl rounded-full opacity-30 transform scale-150 -z-10" />
-                        <div className="bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full p-6 shadow-lg shadow-amber-500/30">
+                        <div
+                          className={`rounded-full p-6 shadow-lg ${
+                            isSinglePlayerMode
+                              ? "bg-gradient-to-br from-purple-400 to-blue-500 shadow-blue-500/30"
+                              : "bg-gradient-to-br from-yellow-400 to-amber-500 shadow-amber-500/30"
+                          }`}
+                        >
                           <Trophy className="w-16 h-16 text-white" />
                         </div>
                       </motion.div>
                     </div>
 
                     <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={
-                        showResults
-                          ? { scale: 1, opacity: 1 }
-                          : { scale: 0.8, opacity: 0 }
-                      }
+                      initial={{ scale: 0.8 }}
+                      animate={{ scale: 1 }}
                       transition={{
                         type: "spring",
                         stiffness: 300,
                         damping: 15,
-                        delay: 0.8,
                       }}
                     >
                       <h2 className="text-3xl font-bold mb-2 text-white">
-                        {winner.nickname} Wins!
+                        {isSinglePlayerMode
+                          ? `${winner.nickname} - Last One Standing!`
+                          : `${winner.nickname} Wins!`}
                       </h2>
                       <div className="inline-block bg-amber-900/30 text-amber-300 border border-amber-500/30 rounded-lg py-2 px-4 font-mono font-bold text-2xl">
                         {winner.total_points} points
@@ -282,116 +247,135 @@ export function GameCompleted({ players }: GameCompletedProps) {
                 </CardItem>
               </motion.div>
 
-              {/* Players ranking */}
-              <motion.div
-                variants={item}
-                initial="hidden"
-                animate={showResults ? "visible" : "hidden"}
-              >
-                <CardItem translateZ={60}>
-                  <Card className="mb-8 border-purple-500/20 bg-slate-800/50 backdrop-blur-sm overflow-hidden">
-                    <div className="p-4 border-b border-purple-500/20 flex items-center gap-3">
-                      <Award className="h-5 w-5 text-purple-400" />
-                      <h3 className="font-bold text-xl text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
-                        Final Rankings
-                      </h3>
-                    </div>
+              {/* Players ranking - show only if more than one player */}
+              {!isSinglePlayerMode && (
+                <motion.div variants={item}>
+                  <CardItem translateZ={60}>
+                    <Card className="mb-8 border-purple-500/20 bg-slate-800/50 backdrop-blur-sm overflow-hidden">
+                      <div className="p-4 border-b border-purple-500/20 flex items-center gap-3">
+                        <Award className="h-5 w-5 text-purple-400" />
+                        <h3 className="font-bold text-xl text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
+                          Final Rankings
+                        </h3>
+                      </div>
 
-                    <div className="divide-y divide-purple-500/10">
-                      {sortedPlayers.map((player, index) => (
-                        <motion.div
-                          key={player.id}
-                          className={`flex items-center p-4 ${
-                            index === 0 ? "bg-amber-500/10" : ""
-                          }`}
-                          initial={{ x: -20, opacity: 0 }}
-                          animate={
-                            showResults
-                              ? { x: 0, opacity: 1 }
-                              : { x: -20, opacity: 0 }
-                          }
-                          transition={{
-                            delay: showResults ? 0.3 + index * 0.1 : 0,
-                            duration: 0.4,
-                            type: "spring",
-                            damping: 15,
-                          }}
-                          whileHover={{
-                            backgroundColor: "rgba(139, 92, 246, 0.1)",
-                          }}
-                        >
-                          <div className="flex-shrink-0 w-8 text-center font-mono font-bold">
-                            {index === 0 ? (
-                              <Crown className="h-6 w-6 text-yellow-500 mx-auto" />
-                            ) : index === 1 ? (
-                              <span className="text-slate-400 text-lg">#2</span>
-                            ) : index === 2 ? (
-                              <span className="text-amber-700 text-lg">#3</span>
-                            ) : (
-                              <span className="text-slate-500 text-lg">
-                                #{index + 1}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex-shrink-0 mx-3">
-                            <div
-                              className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg ${
-                                index === 0
-                                  ? "bg-gradient-to-br from-yellow-400 to-amber-500 ring-2 ring-yellow-500/50"
-                                  : index === 1
-                                    ? "bg-gradient-to-br from-slate-400 to-slate-500"
-                                    : index === 2
-                                      ? "bg-gradient-to-br from-amber-700 to-amber-800"
-                                      : "bg-gradient-to-br from-slate-700 to-slate-800"
-                              }`}
-                            >
-                              {player.nickname[0].toUpperCase()}
+                      <div className="divide-y divide-purple-500/10">
+                        {sortedPlayers.map((player, index) => (
+                          <motion.div
+                            key={player.id}
+                            className={`flex items-center p-4 ${
+                              index === 0 ? "bg-amber-500/10" : ""
+                            }`}
+                            variants={item}
+                            whileHover={{
+                              backgroundColor: "rgba(139, 92, 246, 0.1)",
+                            }}
+                          >
+                            <div className="flex-shrink-0 w-8 text-center font-mono font-bold">
+                              {index === 0 ? (
+                                <Crown className="h-6 w-6 text-yellow-500 mx-auto" />
+                              ) : index === 1 ? (
+                                <span className="text-slate-400 text-lg">
+                                  #2
+                                </span>
+                              ) : index === 2 ? (
+                                <span className="text-amber-700 text-lg">
+                                  #3
+                                </span>
+                              ) : (
+                                <span className="text-slate-500 text-lg">
+                                  #{index + 1}
+                                </span>
+                              )}
                             </div>
-                          </div>
 
-                          <div className="flex-1">
-                            <p
-                              className={`font-medium ${index === 0 ? "text-yellow-100" : "text-white"}`}
-                            >
-                              {player.nickname}
-                            </p>
-                          </div>
+                            <div className="flex-shrink-0 mx-3">
+                              <div
+                                className={`w-10 h-10 rounded-full flex items-center justify-center text-white shadow-lg ${
+                                  index === 0
+                                    ? "bg-gradient-to-br from-yellow-400 to-amber-500 ring-2 ring-yellow-500/50"
+                                    : index === 1
+                                      ? "bg-gradient-to-br from-slate-400 to-slate-500"
+                                      : index === 2
+                                        ? "bg-gradient-to-br from-amber-700 to-amber-800"
+                                        : "bg-gradient-to-br from-slate-700 to-slate-800"
+                                }`}
+                              >
+                                {player.nickname[0].toUpperCase()}
+                              </div>
+                            </div>
 
-                          <div className="font-bold text-lg">
-                            <HoverBorderGradient
-                              containerClassName="rounded-lg"
-                              className={`px-3 py-1 font-mono ${
-                                index === 0
-                                  ? "bg-amber-900/30 text-amber-300"
-                                  : index === 1
-                                    ? "bg-slate-700/80 text-slate-300"
-                                    : index === 2
-                                      ? "bg-amber-800/30 text-amber-700"
-                                      : "bg-slate-800/80 text-slate-400"
-                              }`}
-                              gradientClassName={
-                                index === 0
-                                  ? "bg-gradient-to-r from-yellow-500 to-amber-500"
-                                  : "bg-gradient-to-r from-purple-500 to-pink-500"
-                              }
-                            >
-                              {player.total_points}
-                            </HoverBorderGradient>
+                            <div className="flex-1">
+                              <p
+                                className={`font-medium ${index === 0 ? "text-yellow-100" : "text-white"}`}
+                              >
+                                {player.nickname}
+                              </p>
+                            </div>
+
+                            <div className="font-bold text-lg">
+                              <HoverBorderGradient
+                                containerClassName="rounded-lg"
+                                className={`px-3 py-1 font-mono ${
+                                  index === 0
+                                    ? "bg-amber-900/30 text-amber-300"
+                                    : index === 1
+                                      ? "bg-slate-700/80 text-slate-300"
+                                      : index === 2
+                                        ? "bg-amber-800/30 text-amber-700"
+                                        : "bg-slate-800/80 text-slate-400"
+                                }`}
+                                gradientClassName={
+                                  index === 0
+                                    ? "bg-gradient-to-r from-yellow-500 to-amber-500"
+                                    : "bg-gradient-to-r from-purple-500 to-pink-500"
+                                }
+                              >
+                                {player.total_points}
+                              </HoverBorderGradient>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    </Card>
+                  </CardItem>
+                </motion.div>
+              )}
+
+              {/* For single player, show a special stats card */}
+              {isSinglePlayerMode && (
+                <motion.div variants={item}>
+                  <CardItem translateZ={60}>
+                    <Card className="mb-8 border-purple-500/20 bg-slate-800/50 backdrop-blur-sm overflow-hidden">
+                      <div className="p-4 border-b border-purple-500/20 flex items-center gap-3">
+                        <Award className="h-5 w-5 text-blue-400" />
+                        <h3 className="font-bold text-xl text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500">
+                          Last One Standing
+                        </h3>
+                      </div>
+                      <div className="p-6 text-center">
+                        <div className="flex justify-center mb-4">
+                          <div className="w-20 h-20 rounded-full flex items-center justify-center text-white text-3xl bg-gradient-to-br from-blue-500 to-indigo-500 ring-2 ring-blue-500/50">
+                            {winner.nickname[0].toUpperCase()}
                           </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </Card>
-                </CardItem>
-              </motion.div>
+                        </div>
+                        <h4 className="text-xl font-semibold text-white mb-2">
+                          {winner.nickname}
+                        </h4>
+                        <p className="text-blue-300 mb-4">Lone Survivor</p>
+                        <div className="inline-block bg-blue-900/30 text-blue-300 border border-blue-500/30 rounded-lg py-2 px-4 font-mono font-bold text-xl">
+                          {winner.total_points} points earned
+                        </div>
+                      </div>
+                    </Card>
+                  </CardItem>
+                </motion.div>
+              )}
 
               {/* Action buttons */}
               <motion.div
                 variants={item}
                 className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                initial="hidden"
-                animate={showResults ? "visible" : "hidden"}
               >
                 <CardItem translateZ={40}>
                   <GradientButton

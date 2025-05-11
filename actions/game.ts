@@ -429,7 +429,7 @@ export async function processAIResponses(turnId: string) {
 
   if (!round) throw new Error("Round not found");
 
-  // Get total player count and exclude current decider
+  // Get total player count
   const { data: players, error: playersError } = await supabase
     .from("players")
     .select("id")
@@ -450,12 +450,10 @@ export async function processAIResponses(turnId: string) {
   const deciderHasAnswered =
     answers?.some((a) => a.player_id === turn.decider_id) || false;
 
-  // Calculate expected answers (all players or all players except decider)
   const expectedAnswerCount = deciderHasAnswered
     ? players?.length
     : (players?.length || 0) - 1;
 
-  // If not all expected players have answered, don't proceed
   if ((answers?.length || 0) < expectedAnswerCount) {
     console.log(
       `Only ${answers?.length} of ${expectedAnswerCount} expected players have answered. Waiting for more answers.`
@@ -463,7 +461,7 @@ export async function processAIResponses(turnId: string) {
     return false;
   }
 
-  // Get scenario details from turn
+  // Get turn details
   const { data: turnDetails, error: turnDetailsError } = await supabase
     .from("turns")
     .select("category, scenario_id, context")
@@ -481,25 +479,64 @@ export async function processAIResponses(turnId: string) {
 
   if (scenarioError || !scenario) throw new Error("Scenario not found");
 
-  // Process AI responses
+  // Define category-specific prompts
+  const systemPrompts: Record<string, string> = {
+    "Relationship Drama": `
+You are ToxicTinderBot, a savage AI with zero chill and a PhD in shade. Your vibe is like a TikTok roast session mixed with a soap opera on steroids. 
+1. Read the spicy or messy relationship scenario.
+2. Judge the answer like you’re spilling tea with your unhinged bestie—dank, brutal, and dripping with sarcasm.
+3. Throw in some dumb insults, but keep it just reasonable enough to make sense.
+4. Stay hilarious, maybe a tad abusive, but don’t go full sociopath.
+
+Respond with:
+Score: X, Feedback: Y
+`,
+
+    "Hilarious Chaos": `
+You’re YeetLord420, the ultimate chaos gremlin spawned from cursed memes and 3 AM Discord vibes. 
+1. Dive into the unhinged scenario and rate its chaos like you’re judging a dumpster fire.
+2. Roast the player’s answer with dank humor—think unfiltered Reddit thread energy.
+3. Be dumb, savage, and slightly unhinged, but keep it grounded in the scenario.
+4. Sprinkle in some spicy insults for flavor.
+
+Respond with:
+Score: X, Feedback: Y
+`,
+
+    "Life-or-Death Dilemmas": `
+You’re GrimReaperLad, a melodramatic AI who treats every choice like it’s a B-movie apocalypse. Your vibe is part doomer, part unhinged Twitch streamer. 
+1. Analyze the high-stakes scenario with the energy of a conspiracy theorist yelling into a mic.
+2. Praise epic moves or clown the player for being a total coward—use dank, dumb jabs.
+3. Keep the feedback wild, a bit abusive, but tied to the context.
+4. Make it sound like the world’s ending, but in a hilarious way.
+
+Respond with:
+Score: X, Feedback: Y
+`,
+
+    "Embarrassing Moments": `
+You’re CringeKing69, the god of awkwardness with a black belt in roasting trainwrecks. Your energy is like a viral fail compilation with no mercy. 
+1. Judge the answer’s cringe factor like you’re live-tweeting someone’s worst moment.
+2. Deliver feedback with short, savage burns—dank, dumb, and a smidge mean.
+3. Stay just reasonable enough to tie back to the scenario, but lean into the chaos.
+4. Make the player feel like they tripped in front of the whole internet.
+
+Respond with:
+Score: X, Feedback: Y
+`,
+  };
+
+  const systemPrompt =
+    systemPrompts[turnDetails.category] || systemPrompts["Hilarious Chaos"];
+
   for (const answer of answers || []) {
     try {
       const prompt = `
-You are Gemini 2.0flash, the savage yet insightful evaluator. Your job:
-1. Read the scenario category: ${turnDetails.category}
-2. Read the scenario text: "${scenario.scenario_text}"
-3. Read the context: ${turnDetails.context}
-4. Read the answer to evaluate: "${answer.answer_text}"
+${systemPrompt}
 
-Then:
-• Give it a score from 1–10.
-• Serve up a brutally honest, context‑aware critique sprinkled with dark humor—feel free to roast them mercilessly, but always tie it back to the actual answer.
-• Keep it under 2 sentences of feedback.
-
-Format exactly as:
-Score: X, Feedback: Y
-
-Now go forth and unleash your comedic judgment!
+Scenario: "${scenario.scenario_text}"
+Context: ${turnDetails.context}
+Answer: "${answer.answer_text}"
 `;
 
       const response = await ai.models.generateContent({
@@ -515,7 +552,6 @@ Now go forth and unleash your comedic judgment!
       const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 5;
       const feedback = feedbackMatch?.[1] || "No feedback provided";
 
-      // Update answer with AI feedback and get updated record
       const { data: updatedAnswer } = await supabase
         .from("answers")
         .update({
@@ -525,7 +561,6 @@ Now go forth and unleash your comedic judgment!
         .eq("id", answer.id)
         .select();
 
-      // Broadcast updated answer to all clients
       if (updatedAnswer?.[0]) {
         await supabase.channel("public:answers").send({
           type: "broadcast",
@@ -535,7 +570,6 @@ Now go forth and unleash your comedic judgment!
       }
     } catch (error) {
       console.error("AI processing failed:", error);
-      // Update with error state and broadcast
       const { data: errorAnswer } = await supabase
         .from("answers")
         .update({
@@ -555,7 +589,6 @@ Now go forth and unleash your comedic judgment!
     }
   }
 
-  // Update turn status to voting and broadcast
   await supabase.from("turns").update({ status: "voting" }).eq("id", turnId);
   await supabase.channel("public:turns").send({
     type: "broadcast",
@@ -565,6 +598,7 @@ Now go forth and unleash your comedic judgment!
 
   return true;
 }
+
 export async function submitVote(answerId: string, voterId: string) {
   const supabase = await createClient();
 

@@ -62,8 +62,12 @@ export function SoundSettings() {
   const handleCategoryToggle = (
     category: keyof SoundSettingsType["categories"]
   ) => {
-    playClickSound();
     const newValue = !settings.categories[category];
+
+    // Only play click sound if the category is enabled or if we're toggling a different category than "category"
+    if (settings.categories.category || category !== "category") {
+      playClickSound();
+    }
 
     // Update settings immediately
     handleSettingsChange({

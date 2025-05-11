@@ -16,7 +16,6 @@ import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 
 // Custom Components
 import GameStatistics from "@/components/GameStats";
-import { SoundSettings } from "@/components/SoundSettings";
 
 // Sound Utilities
 import {
@@ -166,20 +165,6 @@ export default function HomeScreen() {
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Sound Settings Button - positioned in top-right corner */}
-      <div className="absolute top-4 right-4 z-50">
-        <CardContainer className="w-auto h-auto">
-          <CardItem
-            translateZ={50}
-            rotateX={-15}
-            rotateZ={10}
-            className="p-1 bg-slate-800/60 backdrop-blur-lg border border-slate-700 rounded-lg hover:shadow-xl hover:shadow-cyan-500/30"
-          >
-            <SoundSettings />
-          </CardItem>
-        </CardContainer>
-      </div>
-
       {/* Background Effects */}
       <Vortex
         backgroundColor="black"

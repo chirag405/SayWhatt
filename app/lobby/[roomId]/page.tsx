@@ -90,8 +90,7 @@ export default function LobbyScreen() {
     // Ensure sounds are preloaded first
     preloadSounds();
 
-    // Start lobby music independently based on user settings
-    // This allows the lobby music to be controlled by the lobby page settings toggle
+    // Start lobby music automatically when entering the lobby screen
     checkAndStartLobbyMusic();
 
     return () => {
@@ -382,7 +381,7 @@ export default function LobbyScreen() {
               <div className="flex flex-col items-center space-y-6">
                 <CardItem translateZ={80} className="w-full text-center">
                   <TextGenerateEffect
-                    words="LOBBY AUREOLE"
+                    words="Lobby Matrix"
                     className="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-br from-cyan-400 via-purple-500 to-pink-500 pb-2"
                   />
                   <p className="text-md text-slate-400 mt-2">
@@ -744,40 +743,45 @@ export default function LobbyScreen() {
                       scaleEffect={false}
                     >
                       <p>
-                        Welcome, Operative. Your mission, should you choose to
-                        accept it:
+                        Welcome, Operative. Your mission parameters have been
+                        initialized:
                       </p>
                       <ul className="list-disc list-inside space-y-2 pl-2">
                         <li>
                           Transmit the{" "}
                           <strong className="text-cyan-300">Room Code</strong>{" "}
-                          to your fellow agents.
+                          to your fellow operatives.
                         </li>
                         <li>
                           Once all operatives are assembled, the{" "}
                           <strong className="text-amber-300">
                             Sector Commander (Host)
                           </strong>{" "}
-                          initiates the mission.
+                          activates the mission protocol.
                         </li>
                         <li>
-                          In each phase (round), operatives will take turns as
+                          In each operation phase, operatives will take turns as
                           the{" "}
                           <strong className="text-purple-300">Decider</strong>.
                         </li>
                         <li>
-                          The Decider evaluates submissions from other
-                          operatives and selects the most ingenious one.
+                          The Decider analyzes submissions from other operatives
+                          and identifies the most strategic response.
                         </li>
                         <li>
-                          Victory requires cunning, creativity, and a dash of
-                          audacity. Good luck.
+                          Submissions are evaluated by our tactical assessment
+                          protocol. Results are classified until the operation
+                          concludes.
+                        </li>
+                        <li>
+                          Victory requires creativity, strategic thinking, and
+                          tactical adaptation.
                         </li>
                       </ul>
                       <div className="text-sm text-teal-300 bg-teal-900/30 p-3.5 rounded-lg border border-teal-700/40 mt-3">
                         <Info className="inline h-4 w-4 mr-1.5" />
                         Tip: Tap the Room Code above for instant clipboard
-                        acquisition. Stay frosty.
+                        transmission. Maintain operational security.
                       </div>
                     </CardItem>
                   </motion.div>
