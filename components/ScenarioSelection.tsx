@@ -201,21 +201,28 @@ export function ScenarioSelection({
         >
           {isDecider ? (
             <div className="w-full space-y-6">
-              <Card className="border border-purple-500/20 bg-slate-800 p-5">
-                <label className="block text-sm font-semibold text-purple-100 mb-2">
-                  Additional Context (Optional)
+              {/* Moved context field to be the first card when selecting a scenario */}
+              <Card className="border border-indigo-500/30 bg-slate-800/90 p-5 relative">
+                <div className="absolute -top-2 right-3 bg-indigo-600 px-2 py-0.5 rounded-md text-xs font-medium text-white">
+                  Private
+                </div>
+                <label className="block text-sm font-semibold text-indigo-100 mb-2">
+                  Additional Context (Private - only visible to you)
                 </label>
                 <textarea
-                  className="w-full p-3 bg-slate-900/60 border border-purple-500/20 rounded-md text-white placeholder-purple-300 focus:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500/20 transition-all duration-200"
+                  className="w-full p-3 bg-slate-900/60 border border-indigo-500/30 rounded-md text-white placeholder-indigo-300 focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 transition-all duration-200"
                   value={context}
                   onChange={(e) => setContext(e.target.value)}
-                  placeholder="Add any context for the scenario..."
+                  placeholder="Add private context for yourself about this scenario..."
                   rows={2}
                 />
+                <p className="mt-2 text-xs text-indigo-200/80">
+                  This context will not be visible to other players and is for
+                  your reference only.
+                </p>
               </Card>
 
               <Card className="border border-purple-500/20 bg-slate-800 p-5">
-                {" "}
                 <div className="mb-4 flex items-center justify-between">
                   <span className="text-base font-semibold text-purple-100">
                     Scenario Options ({generationCount}/3 generations)
@@ -238,7 +245,7 @@ export function ScenarioSelection({
                       "Generate"
                     )}
                   </GradientButton>
-                </div>{" "}
+                </div>
                 {isGenerating ? (
                   <div className="p-4 rounded-lg flex items-center justify-center bg-slate-900/60 border border-slate-700">
                     <div className="w-6 h-6 border-3 border-t-purple-500 border-purple-300/30 rounded-full animate-spin mr-3" />
@@ -273,7 +280,7 @@ export function ScenarioSelection({
                 )}
               </Card>
 
-              <Card className="border border-purple-500/20 bg-slate-800 p-5">
+              <Card className="border border-blue-500/20 bg-slate-800 p-5">
                 <label className="block text-sm font-semibold text-blue-100 mb-2">
                   Custom Scenario
                 </label>

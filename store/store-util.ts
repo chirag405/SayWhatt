@@ -4,20 +4,28 @@ import { useGameStore } from "./game-store";
 import { useUserRoomStore } from "./user-room-store";
 
 export const resetAllStores = () => {
-  // Reset game store
-  useGameStore.getState().resetState();
+  try {
+    // First get important IDs before resetting
+    const roomId = useUserRoomStore.getState().currentRoom?.id;
+    const turnId = useGameStore.getState().currentTurn?.id;
+    const userId = useUserRoomStore.getState().currentUser?.id;
 
-  // Reset user room store
-  useUserRoomStore.getState().resetState();
+    // Reset game store - this will cancel timers, etc.
+    useGameStore.getState().resetState();
 
-  // Clean up any active subscriptions if necessary
-  const roomId = useUserRoomStore.getState().currentRoom?.id;
-  const turnId = useGameStore.getState().currentTurn?.id;
+    // Reset user room store - this closes subscriptions
+    useUserRoomStore.getState().resetState();
 
-  if (roomId) {
-    // This assumes you're properly cleaning up subscriptions in the resetState methods
-    // If not, you may need to manually clean up subscriptions here
+    // Clean up any residual items from localStorage
+    localStorage.removeItem("currentUser");
+    localStorage.removeItem("currentRoom");
+
+    // Also cleanup any session storage items that might be causing issues
+    sessionStorage.removeItem(`game-${roomId}`);
+    sessionStorage.removeItem(`turn-${turnId}`);
+
+    console.log("All stores and local storage reset successfully");
+  } catch (error) {
+    console.error("Error during store reset:", error);
   }
-
-  console.log("All stores reset successfully");
 };

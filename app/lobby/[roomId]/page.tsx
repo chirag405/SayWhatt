@@ -391,27 +391,22 @@ export default function LobbyScreen() {
                     </span>
                     !
                   </p>
-                </CardItem>
-
+                </CardItem>{" "}
                 <CardItem translateZ={60} className="w-full max-w-lg">
-                  <HoverBorderGradient
-                    containerClassName="rounded-xl w-full"
-                    as="div"
-                    className="bg-slate-800/50 p-6 rounded-xl cursor-pointer relative overflow-hidden"
+                  <div
+                    className="bg-slate-800/70 p-6 rounded-xl cursor-pointer relative overflow-hidden border border-slate-700/50 hover:border-cyan-500/50 shadow-lg transition-all duration-300 hover:shadow-cyan-400/20"
                     onClick={() => {
                       copyRoomCode();
                       playClickSound();
                     }}
                   >
                     <div className="flex items-center justify-center space-x-4">
-                      <Share2 className="h-7 w-7 text-blue-400 group-hover:text-cyan-300 transition-colors" />
-                      <TextGenerateEffect
-                        words={currentRoom.room_code}
-                        duration={0.3}
-                        className="text-5xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-cyan-300 to-purple-300 tracking-widest mono-font-display"
-                      />
+                      <Share2 className="h-7 w-7 text-blue-400 hover:text-cyan-300 transition-colors" />
+                      <div className="text-5xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-cyan-300 to-purple-300 tracking-widest font-mono">
+                        {currentRoom.room_code}
+                      </div>
                     </div>
-                    <p className="text-sm text-center text-slate-400 mt-4 group-hover:text-cyan-300 transition-colors">
+                    <p className="text-sm text-center text-slate-400 mt-4 hover:text-cyan-300 transition-colors">
                       {copySuccess
                         ? copySuccess
                         : "Tap Code to Copy & Share Mission Intel"}
@@ -429,9 +424,8 @@ export default function LobbyScreen() {
                         </motion.div>
                       )}
                     </AnimatePresence>
-                  </HoverBorderGradient>
+                  </div>
                 </CardItem>
-
                 <div className="flex flex-wrap justify-center gap-5 w-full">
                   {[
                     {
@@ -765,7 +759,7 @@ export default function LobbyScreen() {
                           <strong className="text-purple-300">Decider</strong>.
                         </li>
                         <li>
-                          The Decider analyzes submissions from other operatives
+                          The MethHead analyzes submissions from all operatives
                           and identifies the most strategic response.
                         </li>
                         <li>

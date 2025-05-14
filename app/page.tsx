@@ -203,11 +203,6 @@ export default function HomeScreen() {
         <h1 className="text-5xl md:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-purple-500 to-blue-500 my-6 relative z-20">
           SayWhat
         </h1>
-        <TextGenerateEffect
-          words="The Ultimate Social Word Game"
-          className="text-xl text-slate-300"
-          duration={1.2}
-        />
       </div>
 
       {/* Main Content */}
