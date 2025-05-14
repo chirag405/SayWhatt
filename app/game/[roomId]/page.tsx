@@ -646,34 +646,40 @@ export default function GameScreen() {
 
         {/* Main Content Area */}
         <div className="flex-1 flex flex-col px-1 md:px-6 lg:px-10 py-6 overflow-hidden">
-          {/* Game Header - Round info, timer, etc */}
+          {/* Game Header - Round info, timer, etc */}{" "}
           <CardContainer perspective={1200}>
-            <CardBody className="w-full bg-slate-900/75 backdrop-blur-xl border border-slate-700/80 rounded-lg shadow-lg shadow-purple-500/20 mb-6 p-4">
+            <CardBody className="w-full bg-slate-900/75 backdrop-blur-xl border border-slate-700/80 rounded-lg shadow-lg shadow-purple-500/20 mb-6 p-5">
               <div className="absolute inset-0 rounded-lg border-2 border-transparent group-hover:border-purple-500/50 transition-all duration-500 pointer-events-none animate-pulse-border" />
 
-              <div className="flex justify-between items-center">
-                <CardItem translateZ={20} className="flex flex-col">
+              <div className="flex justify-between items-center gap-4">
+                <CardItem
+                  translateZ={20}
+                  className="flex flex-col flex-shrink-0"
+                >
                   <div className="flex items-center">
                     <Trophy className="h-5 w-5 text-yellow-400 mr-2" />
                     <h2 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
                       Round {roundNumber}/{totalRounds}
                     </h2>
                   </div>
-                  <p className="text-gray-400 mt-1">
-                    Turn #{turnNumber} •{" "}
-                    <span className="text-purple-300">
+                  <p className="text-gray-400 mt-1">Turn #{turnNumber}</p>
+                </CardItem>
+
+                <CardItem translateZ={20} className="flex-1 min-w-0">
+                  <div className="bg-slate-800/50 px-3 py-2 rounded-lg border border-purple-500/20">
+                    <p className="text-purple-300 truncate">
                       Decider:{" "}
                       <span className="font-semibold">
                         {currentGame.players.find(
                           (p) => p.id === currentTurn?.decider_id
                         )?.nickname || "..."}
                       </span>
-                    </span>
-                  </p>
+                    </p>
+                  </div>
                 </CardItem>
 
                 {timerEnd && currentTurn?.status === "answering" && (
-                  <CardItem translateZ={30} className="flex flex-shrink-0">
+                  <CardItem translateZ={30} className="flex-shrink-0">
                     <HoverBorderGradient
                       containerClassName="rounded-lg overflow-hidden"
                       className="bg-slate-800/90 px-4 py-2 flex items-center"
@@ -688,10 +694,10 @@ export default function GameScreen() {
                   </CardItem>
                 )}
 
-                <CardItem translateZ={25} className="ml-auto">
+                <CardItem translateZ={25} className="flex-shrink-0">
                   <GradientButton
                     onClick={handleExit}
-                    className="flex items-center gap-1.5 text-sm py-1 px-2"
+                    className="flex items-center gap-1.5 text-sm py-2 px-3"
                     gradientFrom="from-gray-600"
                     gradientTo="to-slate-700"
                     variant="outline"
@@ -703,7 +709,6 @@ export default function GameScreen() {
               </div>
             </CardBody>
           </CardContainer>
-
           {/* Game Content Area */}
           <CardContainer className="flex-1 w-full">
             <CardBody className="w-full bg-slate-900/80 backdrop-blur-xl border border-slate-700/70 rounded-xl p-6 md:p-8 shadow-xl overflow-hidden flex">

@@ -447,11 +447,22 @@ export const useUserRoomStore = create<UserRoomState>((set, get) => ({
             console.log("Player deleted:", deletedPlayer.id);
 
             // Update local state to remove the player
-            set((state) => ({
-              roomPlayers: state.roomPlayers.filter(
-                (p) => p.id !== deletedPlayer.id
-              ),
-            }));
+            set((state) => {
+              console.log(
+                "Removing player from local state:",
+                deletedPlayer.id
+              );
+              console.log("Current players before:", state.roomPlayers.length);
+
+              // Also force a refresh of the player list from the database
+              fetchAllPlayers();
+
+              return {
+                roomPlayers: state.roomPlayers.filter(
+                  (p) => p.id !== deletedPlayer.id
+                ),
+              };
+            });
           } else if (payload.eventType === "INSERT") {
             // Handle insert as before
             const newPlayer = payload.new as Player;

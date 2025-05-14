@@ -173,13 +173,12 @@ export function AnswerSubmission({
 
           <Sparkles>
             <div className="text-3xl font-bold mb-6 text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-blue-300">
-              AI Neural Processing
+              Reviewing Answers
             </div>
           </Sparkles>
 
           <p className="text-purple-200 mb-8 max-w-md mx-auto">
-            Our AI is analyzing all submissions for creativity and humor.
-            Prepare for the voting phase!
+            The MethHead is reviewing the answers...
           </p>
 
           <div className="flex justify-center space-x-3">

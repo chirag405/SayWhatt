@@ -33,7 +33,7 @@ export function ScenarioSelection({
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(40);
-
+  const [generationCount, setGenerationCount] = useState(0);
   useEffect(() => {
     if (isDecider && !scenarios.length) {
       handleGenerateScenarios();
@@ -48,8 +48,12 @@ export function ScenarioSelection({
         if (prevTime <= 1) {
           clearInterval(timer);
           if (scenarios.length > 0) {
-            const randomIndex = Math.floor(Math.random() * scenarios.length);
-            const randomScenario = scenarios[randomIndex];
+            // Choose from the most recent batch (last 4 scenarios)
+            const recentScenarios = scenarios.slice(-4);
+            const randomIndex = Math.floor(
+              Math.random() * recentScenarios.length
+            );
+            const randomScenario = recentScenarios[randomIndex];
             handleSelectScenario(randomScenario);
           }
           return 0;
@@ -66,16 +70,27 @@ export function ScenarioSelection({
       setTimeLeft(40);
     }
   }, [scenarios.length]);
-
   const handleGenerateScenarios = async () => {
     if (!isDecider) return;
+
+    // Check if we've already generated scenarios three times
+    if (generationCount >= 3) {
+      setError("You can only generate scenarios 3 times per turn.");
+      return;
+    }
 
     setIsGenerating(true);
     setError(null);
 
     try {
       const generatedScenarios = await generateScenarios(turnId);
-      setScenarios(generatedScenarios);
+      // Append new scenarios to existing ones instead of replacing
+      setScenarios((prevScenarios) => [
+        ...prevScenarios,
+        ...generatedScenarios,
+      ]);
+      // Increment generation count
+      setGenerationCount((prevCount) => prevCount + 1);
     } catch (err) {
       console.error("Error generating scenarios:", err);
       setError("Failed to generate scenarios. Please try again.");
@@ -200,13 +215,14 @@ export function ScenarioSelection({
               </Card>
 
               <Card className="border border-purple-500/20 bg-slate-800 p-5">
+                {" "}
                 <div className="mb-4 flex items-center justify-between">
                   <span className="text-base font-semibold text-purple-100">
-                    AI Scenarios
+                    Scenario Options ({generationCount}/3 generations)
                   </span>
                   <GradientButton
                     onClick={handleGenerateScenarios}
-                    disabled={isGenerating || isLoading}
+                    disabled={isGenerating || isLoading || generationCount >= 3}
                     className="px-4 py-1.5 text-sm"
                   >
                     {isGenerating ? (
@@ -214,23 +230,26 @@ export function ScenarioSelection({
                         <div className="w-4 h-4 border-2 border-t-white border-white/30 rounded-full animate-spin mr-2" />
                         Generating...
                       </span>
+                    ) : generationCount >= 3 ? (
+                      "Limit Reached"
                     ) : scenarios.length ? (
-                      "Regenerate"
+                      "Generate More"
                     ) : (
                       "Generate"
                     )}
                   </GradientButton>
-                </div>
+                </div>{" "}
                 {isGenerating ? (
                   <div className="p-4 rounded-lg flex items-center justify-center bg-slate-900/60 border border-slate-700">
                     <div className="w-6 h-6 border-3 border-t-purple-500 border-purple-300/30 rounded-full animate-spin mr-3" />
                     <span className="text-purple-200">
-                      Creating scenarios...
+                      Loading scenarios...
                     </span>
                   </div>
                 ) : scenarios.length > 0 ? (
                   <div className="space-y-3">
-                    {scenarios.map((scenario, index) => (
+                    {/* Show the 4 most recently generated scenarios */}
+                    {scenarios.slice(-4).map((scenario, index) => (
                       <button
                         key={`scenario-${index}`}
                         onClick={() => handleSelectScenario(scenario)}
@@ -248,7 +267,8 @@ export function ScenarioSelection({
                   </div>
                 ) : (
                   <div className="p-4 rounded-lg bg-slate-900/60 border border-slate-700 text-center text-slate-300">
-                    Click "Generate" to create scenario options
+                    Click "Generate" to load scenario options ({generationCount}
+                    /3 generations used)
                   </div>
                 )}
               </Card>

@@ -243,6 +243,9 @@ export async function generateScenarios(turnId: string) {
   console.log("Generating scenarios for turnId:", turnId);
   const supabase = await createClient();
 
+  // Import data.json
+  const scenariosData = require("../data/data.json");
+
   // Fetch category from turn
   const { data: turn, error } = await supabase
     .from("turns")
@@ -252,28 +255,25 @@ export async function generateScenarios(turnId: string) {
 
   if (error || !turn) throw new Error("Turn not found");
 
-  // Improved prompt for better scenarios
-  const prompts = Array(3).fill(
-    `Generate a wild, unpredictable party game scenario in the ${turn.category} category. 
-    Keep it under two lines. Make it funny, thought-provoking, or absurdly tricky—something that will spark debate and laughter among friends.`
+  // Find category in data.json
+  const categoryData = scenariosData.categories.find(
+    (cat: { name: string }) => cat.name === turn.category
   );
 
-  // Generate 3 AI scenarios
-  const aiScenarios = await Promise.all(
-    prompts.map(async (prompt) => {
-      const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-      });
-      return response.candidates?.[0]?.content?.parts?.[0]?.text || "";
-    })
+  if (!categoryData)
+    throw new Error(`Category ${turn.category} not found in data.json`);
+
+  // Get 4 random scenarios from the category
+  const shuffledScenarios = [...categoryData.scenarios].sort(
+    () => 0.5 - Math.random()
   );
+  const selectedScenarios = shuffledScenarios.slice(0, 4);
 
   // Store scenarios in Supabase with turn_id
   const { data: scenarios, error: insertError } = await supabase
     .from("scenarios")
     .insert(
-      aiScenarios.map((text) => ({
+      selectedScenarios.map((text) => ({
         turn_id: turnId,
         scenario_text: text,
         is_custom: false,

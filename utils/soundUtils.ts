@@ -10,6 +10,7 @@ export const SOUND_PATHS = {
   voteDown: "/sounds/vote-down.mp3",
   resultsReveal: "/sounds/results-reveal.mp3",
   transition: "/sounds/transition.mp3",
+  rickRoll: "/sounds/rick-roll.mp3",
 };
 
 // Sound category types for settings

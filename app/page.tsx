@@ -48,10 +48,14 @@ export default function HomeScreen() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isFormVisible, setIsFormVisible] = useState(false);
-
   // Play sound effect on button click
   const playClickSound = () => {
     playSound(SOUND_PATHS.categorySelect, "category");
+  };
+
+  // Play rick roll sound
+  const playRickRoll = () => {
+    playSound(SOUND_PATHS.rickRoll, "results", false);
   };
 
   useEffect(() => {
@@ -477,7 +481,36 @@ export default function HomeScreen() {
               )}
             </AnimatePresence>
           </CardBody>
-        </CardContainer>
+        </CardContainer>{" "}
+      </motion.div>
+
+      {/* Rick Roll Button */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 1.5, type: "spring", bounce: 0.6 }}
+        className="relative z-20 mt-10"
+      >
+        <CardItem translateZ={100} className="relative">
+          <motion.button
+            onClick={playRickRoll}
+            className="group relative overflow-hidden rounded-xl bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 p-0.5 font-black text-xl shadow-xl transition-all hover:shadow-[0_0_40px_8px_rgba(255,0,0,0.5)]"
+            whileHover={{
+              scale: 1.05,
+              rotate: [0, -1, 1, -1, 0],
+              transition: { rotate: { repeat: 3, duration: 0.3 } },
+            }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <span className="block rounded-[0.70rem] bg-black px-6 py-3 text-center transition-all group-hover:bg-transparent">
+              <span className="bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 bg-clip-text font-bold text-transparent transition-all group-hover:text-black">
+                ⚠️ Don't Click Here ⚠️
+              </span>
+              <span className="absolute -bottom-1 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full bg-red-500 shadow-lg shadow-red-900/40 animate-ping"></span>
+            </span>
+            <span className="absolute -inset-4 z-0 transform-gpu rounded-2xl bg-gradient-to-r from-pink-500 via-red-500 to-yellow-500 opacity-30 blur-xl transition-all"></span>
+          </motion.button>
+        </CardItem>
       </motion.div>
 
       {/* Statistics Footer */}
