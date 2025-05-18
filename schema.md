@@ -251,15 +251,25 @@ player_room_id := OLD.room_id;
     -- Count remaining players in the room
     SELECT COUNT(*) INTO remaining_players
     FROM players
-    WHERE room_id = player_room_id;
-
-    -- If only one player is left, end the game immediately
+    WHERE room_id = player_room_id;    -- If only one player is left, end the game immediately
     IF remaining_players = 1 THEN
         -- Mark the room as completed
         UPDATE rooms
         SET game_status = 'completed',
             updated_at = NOW()
         WHERE id = player_room_id;
+
+        -- Also complete any active rounds
+        UPDATE rounds
+        SET status = 'completed',
+            is_complete = TRUE
+        WHERE room_id = player_room_id AND is_complete = FALSE;
+
+        -- Perform notification
+        PERFORM pg_notify('game_completed', json_build_object(
+            'room_id', player_room_id,
+            'reason', 'only_one_player_remains'
+        )::text);
 
         RETURN OLD;
     END IF;

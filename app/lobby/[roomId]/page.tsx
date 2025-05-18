@@ -8,9 +8,6 @@ import { useGameStore } from "@/store/game-store";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/utils/supabase/client";
 
-// Aceternity UI Imports
-import BackgroundBeams from "@/components/ui/background-beams";
-
 import { CardContainer, CardBody, CardItem } from "@/components/ui/3d-card"; // Updated import for TypeScript support
 
 import { Vortex } from "@/components/ui/vortex"; // NEW
@@ -40,7 +37,7 @@ import {
   checkAndStartLobbyMusic,
 } from "@/utils/soundUtils";
 import { SoundSettings } from "@/components/SoundSettings";
-import { Meteors } from "@/components/ui/meteors";
+
 import { Spotlight } from "@/components/ui/spotlight";
 
 // Placeholder for a more gamified loading spinner
@@ -308,11 +305,7 @@ export default function LobbyScreen() {
           baseHue={260}
           rangeY={200}
         />
-        <BackgroundBeams className="opacity-10 z-0" />
-        <Meteors
-          number={20}
-          className="opacity-70 fixed inset-0 pointer-events-none z-[5]"
-        />
+
         <CardContainer className="relative z-10">
           <CardBody className="bg-slate-900/70 backdrop-blur-lg border border-slate-700 rounded-2xl p-8 shadow-2xl shadow-purple-500/30">
             <GamifiedLoader
@@ -347,11 +340,7 @@ export default function LobbyScreen() {
         rangeY={200}
         baseHue={260}
       />
-      <BackgroundBeams className="opacity-10 z-0" />
-      <Meteors
-        number={25}
-        className="opacity-75 fixed inset-0 pointer-events-none z-[5]"
-      />
+
       <Spotlight
         className="-top-40 -left-20 md:left-60 md:-top-20 z-[1]"
         fill="blue"

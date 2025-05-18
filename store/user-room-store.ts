@@ -94,7 +94,6 @@ export const useUserRoomStore = create<UserRoomState>((set, get) => ({
   lastRoomCheck: 0,
   currentTurn: null,
   isRoundVotingPhase: false,
-
   // Realtime subscription for room changes
   subscribeToRoom: (roomId) => {
     console.log("Subscribing to room changes for:", roomId);
@@ -121,6 +120,16 @@ export const useUserRoomStore = create<UserRoomState>((set, get) => ({
             "status:",
             room.game_status
           );
+
+          // Check if the game is already completed
+          if (room.game_status === "completed") {
+            console.log("Room is already in completed state");
+            // Make sure game store is in completed state too
+            const gameStore = useGameStore.getState();
+            if (gameStore.currentGame) {
+              gameStore.currentGame.room.game_status = "completed";
+            }
+          }
 
           // If room has current_turn number, fetch the actual turn data
           if (room.current_turn) {
@@ -199,8 +208,32 @@ export const useUserRoomStore = create<UserRoomState>((set, get) => ({
         console.log("Room change detected:", payload.eventType);
         console.log("Room payload data:", payload);
         const updatedRoom = payload.new as Room;
-
         console.log("Room status updated to:", updatedRoom.game_status);
+
+        // Specifically handle when game_status changes to completed
+        if (
+          updatedRoom.game_status === "completed" &&
+          get().currentRoom?.game_status !== "completed"
+        ) {
+          console.log("Game is now complete! Transitioning to results screen.");
+          // Play results sound if available
+          try {
+            // This needs access to the client-side sound API
+            const gameStore = useGameStore.getState();
+
+            // Update game state to completed in game store
+            if (gameStore.currentGame) {
+              gameStore.currentGame.room.game_status = "completed";
+            }
+          } catch (error) {
+            console.error("Error updating game state on completion:", error);
+          }
+
+          // Show toast notification if possible
+          try {
+            // This would need to be handled at component level
+          } catch (err) {}
+        }
 
         // If room has current_turn number and it changed, fetch the actual turn data
         if (updatedRoom.current_turn !== get().currentRoom?.current_turn) {
@@ -258,14 +291,45 @@ export const useUserRoomStore = create<UserRoomState>((set, get) => ({
         }
       }
     );
-
     const subscription = channel.subscribe((status) => {
       console.log(`Room subscription status for ${roomId}:`, status);
     });
 
+    // Also subscribe to game_completed notifications
+    const gameCompletedChannel = supabase
+      .channel("game_completed_channel")
+      .on("broadcast", { event: "game_completed" }, (payload) => {
+        console.log("Game completed notification received:", payload);
+
+        const roomId = payload.payload?.room_id;
+        const reason = payload.payload?.reason;
+
+        if (roomId === get().currentRoom?.id) {
+          console.log(`Game completed for room ${roomId}. Reason: ${reason}`);
+
+          // Force refresh room data
+          get().fetchRoomById(roomId);
+
+          // Update game store directly if possible
+          try {
+            const gameStore = useGameStore.getState();
+            if (gameStore.currentGame) {
+              gameStore.currentGame.room.game_status = "completed";
+            }
+          } catch (error) {
+            console.error("Error updating game store on completion:", error);
+          }
+        }
+      })
+      .subscribe((status, err) => {
+        if (err) console.error("Game completed subscription error:", err);
+        console.log("Game completed subscription status:", status);
+      });
+
     return () => {
       console.log("Unsubscribing from room:", roomId);
       supabase.removeChannel(channel);
+      supabase.removeChannel(gameCompletedChannel);
     };
   },
   setCurrentRoom: (room) => {
@@ -746,11 +810,53 @@ export const useUserRoomStore = create<UserRoomState>((set, get) => ({
       };
     }
   },
-
   fetchRoomById: async (roomId) => {
     try {
+      // Fetch room data
       const result = await fetchRoomById(roomId);
-      if (result.success) set({ currentRoom: result.room || null });
+
+      if (result.success) {
+        set({ currentRoom: result.room || null });
+
+        // Also fetch the latest players in the room to sync state
+        // This is important when players leave
+        try {
+          const playersResult = await get().fetchPlayersInRoom(roomId);
+
+          // Check if there's only one player left and the game isn't completed yet
+          if (
+            playersResult.success &&
+            playersResult.players &&
+            playersResult.players.length === 1 &&
+            result.room?.game_status !== "completed"
+          ) {
+            // Force update room status to completed if only one player remains
+            const supabase = createClient();
+            await supabase
+              .from("rooms")
+              .update({
+                game_status: "completed",
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", roomId);
+
+            // Update our local state
+            set((state) => ({
+              currentRoom: state.currentRoom
+                ? { ...state.currentRoom, game_status: "completed" }
+                : null,
+            }));
+
+            console.log("Room marked as completed - only one player remains");
+          }
+        } catch (playerError) {
+          console.error(
+            "Error fetching players during room refresh:",
+            playerError
+          );
+        }
+      }
+
       return result;
     } catch (error) {
       console.error("Error in fetchRoomById:", error);

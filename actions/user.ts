@@ -159,13 +159,53 @@ export const deletePlayer = async (playerId: string) => {
       }
     }
 
+    // Count remaining players BEFORE deletion
+    const { data: remainingPlayers } = await supabase
+      .from("players")
+      .select("id")
+      .eq("room_id", player.room_id);
+
+    const playerCount = remainingPlayers?.length || 0;
+
     // Perform the deletion
     const { error } = await supabase
       .from("players")
       .delete()
       .eq("id", playerId);
 
-    if (error) return { success: false, error: error.message };
+    if (error) return { success: false, error: error.message }; // If this deletion will leave only one player, explicitly update the game status to completed
+    if (playerCount <= 2) {
+      // 2 because we're counting before deletion (playerCount - 1 == 1 after deletion)
+      console.log("Only one player will remain, setting game to completed");
+
+      // Update the room status to 'completed'
+      const { error: roomUpdateError } = await supabase
+        .from("rooms")
+        .update({
+          game_status: "completed",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", player.room_id);
+
+      if (roomUpdateError) {
+        console.error("Error updating room status:", roomUpdateError);
+      }
+
+      // Also complete any active rounds
+      if (currentRound && currentRound.length > 0) {
+        const { error: roundUpdateError } = await supabase
+          .from("rounds")
+          .update({
+            status: "completed",
+            is_complete: true,
+          })
+          .eq("id", currentRound[0].id);
+
+        if (roundUpdateError) {
+          console.error("Error updating round status:", roundUpdateError);
+        }
+      }
+    }
 
     // Broadcast player departure information
     await supabase.channel(`players-departure:${player.room_id}`).send({
@@ -176,6 +216,7 @@ export const deletePlayer = async (playerId: string) => {
         playerName: player.nickname,
         wasHost: player.is_host,
         wasDecider: isDecider,
+        gameCompleted: playerCount <= 2,
       },
     });
 

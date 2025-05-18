@@ -8,7 +8,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import { Sparkles as SparklesCore } from "@/components/ui/Sparkles";
 import { Spotlight } from "@/components/ui/spotlight";
-import { Meteors } from "@/components/ui/meteors";
+
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
 import { CardContainer, CardBody, CardItem } from "@/components/ui/3d-card";
 import { Vortex } from "@/components/ui/vortex";
@@ -28,7 +28,6 @@ import {
 
 // Icons
 import { Gamepad2, Users, Clock, ArrowRight } from "lucide-react";
-import BackgroundBeams from "@/components/ui/background-beams";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -169,42 +168,19 @@ export default function HomeScreen() {
 
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden">
+      {" "}
       {/* Background Effects */}
-      <Vortex
-        backgroundColor="black"
-        className="fixed inset-0 w-full h-full z-0"
-        particleColors={["#3b82f6", "#8b5cf6", "#ec4899", "#10b981"]}
-        rangeY={200}
-        baseHue={260}
-      />
-      <BackgroundBeams className="opacity-20 z-0" />
+      <div className="fixed inset-0 w-full h-full z-0 bg-black"></div>
       <Spotlight
         className="-top-40 left-0 md:left-60 md:-top-20 z-10"
         fill="blue"
-      />
-
-      {/* Floating Meteors Effect */}
-      <Meteors
-        number={20}
-        className="opacity-70 fixed inset-0 pointer-events-none z-[5]"
-      />
-
-      {/* Title with Sparkles */}
+      />{" "}
+      {/* Title */}
       <div className="w-full max-w-4xl text-center relative z-10 mb-8">
-        <SparklesCore
-          id="tsparticles"
-          background="transparent"
-          minSize={0.6}
-          maxSize={1.4}
-          particleDensity={100}
-          className="w-full h-20 absolute"
-          particleColor="#fff"
-        />
         <h1 className="text-5xl md:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-purple-500 to-blue-500 my-6 relative z-20">
           SayWhat
         </h1>
       </div>
-
       {/* Main Content */}
       <motion.div
         initial="hidden"
@@ -478,7 +454,6 @@ export default function HomeScreen() {
           </CardBody>
         </CardContainer>{" "}
       </motion.div>
-
       {/* Rick Roll Button */}
       <motion.div
         initial={{ opacity: 0, scale: 0.8 }}
@@ -507,7 +482,6 @@ export default function HomeScreen() {
           </motion.button>
         </CardItem>
       </motion.div>
-
       {/* Statistics Footer */}
       <div className="mt-16 relative z-10">
         <GameStatistics />

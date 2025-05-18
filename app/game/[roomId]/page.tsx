@@ -27,9 +27,8 @@ import { SoundSettings } from "@/components/SoundSettings";
 import { CardContainer, CardBody, CardItem } from "@/components/ui/3d-card";
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
 import { Vortex } from "@/components/ui/vortex";
-import { Meteors } from "@/components/ui/meteors";
+
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
-import BackgroundBeams from "@/components/ui/background-beams";
 
 // Sound utilities
 import {
@@ -237,18 +236,41 @@ export default function GameScreen() {
     if (gameCompleted && prevTurnStateRef.current !== "completed") {
       playSound(SOUND_PATHS.resultsReveal, "results");
       prevTurnStateRef.current = "completed";
-    }
-
-    // Check if only one player remains - this should trigger game completion
+    } // Check if only one player remains - this should trigger game completion
     if (currentGame?.players.length === 1 && !gameCompleted) {
       console.log("Only one player left, ending game");
       // Force room status to completed if not already done by database trigger
       const updateRoomToCompleted = async () => {
         const supabase = createClient();
-        await supabase
-          .from("rooms")
-          .update({ game_status: "completed" })
-          .eq("id", roomId);
+        try {
+          // Update room status
+          await supabase
+            .from("rooms")
+            .update({
+              game_status: "completed",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", roomId);
+
+          // Also update any active rounds
+          if (currentRound?.id) {
+            await supabase
+              .from("rounds")
+              .update({
+                status: "completed",
+                is_complete: true,
+              })
+              .eq("id", currentRound.id);
+          }
+
+          // Force refresh game state to ensure UI updates
+          fetchRoomById(roomId);
+
+          // Play results sound
+          playSound(SOUND_PATHS.resultsReveal, "results");
+        } catch (error) {
+          console.error("Error updating room status:", error);
+        }
       };
       updateRoomToCompleted();
     }
@@ -267,13 +289,13 @@ export default function GameScreen() {
     const playerDepartureChannel = supabase.channel(
       `players-departure:${roomId}`
     );
-
     playerDepartureChannel
       .on("broadcast", { event: "PLAYER_DELETED" }, (payload) => {
         const departedPlayerId = payload.payload.playerId;
         const departedPlayerName = payload.payload.playerName || "A player";
         const wasDecider = payload.payload.wasDecider;
         const wasHost = payload.payload.wasHost;
+        const gameCompleted = payload.payload.gameCompleted;
 
         // Show notification to users
         let message = `${departedPlayerName} has left the game.`;
@@ -282,13 +304,57 @@ export default function GameScreen() {
         if (wasDecider) {
           message = `${departedPlayerName} (Decider) has left the game. A new decider has been assigned.`;
           variant = "destructive";
-          // Force refresh game state after a brief delay
-          setTimeout(() => {
-            fetchRoomById(roomId);
-          }, 1000);
         } else if (wasHost) {
           message = `${departedPlayerName} (Host) has left the game. A new host has been assigned.`;
           variant = "warning";
+        }
+
+        // Force refresh game state after a player leaves
+        fetchRoomById(roomId);
+
+        // If the game is completed (only one player remains), show a special message and update UI
+        if (gameCompleted) {
+          message = `${departedPlayerName} has left. Only one player remains. Moving to results screen...`;
+          variant = "destructive";
+
+          // Force room status to completed - belt and suspenders approach
+          const updateRoomToCompleted = async () => {
+            const supabase = createClient();
+            try {
+              await supabase
+                .from("rooms")
+                .update({
+                  game_status: "completed",
+                  updated_at: new Date().toISOString(),
+                })
+                .eq("id", roomId);
+
+              // Also update any active rounds
+              const { data } = await supabase
+                .from("rounds")
+                .select("id")
+                .eq("room_id", roomId)
+                .eq("is_complete", false)
+                .limit(1);
+
+              if (data && data.length > 0) {
+                await supabase
+                  .from("rounds")
+                  .update({
+                    status: "completed",
+                    is_complete: true,
+                  })
+                  .eq("id", data[0].id);
+              }
+
+              // Force refresh to ensure UI updates
+              fetchRoomById(roomId);
+            } catch (error) {
+              console.error("Error updating room status:", error);
+            }
+          };
+
+          updateRoomToCompleted();
         }
 
         // Show toast notification
@@ -506,11 +572,6 @@ export default function GameScreen() {
           rangeY={200}
           baseHue={260}
         />
-        <BackgroundBeams className="opacity-20 z-0" />
-        <Meteors
-          number={10}
-          className="opacity-70 fixed inset-0 pointer-events-none z-[5]"
-        />
 
         <CardContainer className="relative z-10">
           <CardBody className="bg-slate-900/75 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-8 md:p-10 shadow-2xl shadow-purple-600/40 group/card">
@@ -566,7 +627,6 @@ export default function GameScreen() {
           baseHue={260}
           darkMode={true}
         />
-        <BackgroundBeams className="opacity-10 z-0" />
 
         <CardContainer className="relative z-10 max-w-lg">
           <CardBody className="bg-slate-900/75 backdrop-blur-xl border border-red-500/30 rounded-2xl p-8 shadow-2xl">
@@ -608,11 +668,7 @@ export default function GameScreen() {
         rangeY={200}
         baseHue={260}
       />
-      <BackgroundBeams className="opacity-20 z-0" />
-      <Meteors
-        number={20}
-        className="opacity-75 fixed inset-0 pointer-events-none z-[5]"
-      />
+
       <Spotlight
         className="-top-40 left-0 md:left-60 md:-top-20 z-10"
         fill="blue"
