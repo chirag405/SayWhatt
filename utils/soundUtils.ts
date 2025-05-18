@@ -167,10 +167,16 @@ export function preloadSounds(): void {
     // Determine if this sound should loop (only lobby music loops)
     const shouldLoop = key === "lobby";
 
+    // Apply volume adjustments for specific sounds
+    let initialVolume = settings.masterVolume;
+    if (key === "resultsReveal") {
+      initialVolume = settings.masterVolume * 0.5;
+    }
+
     soundInstances[key] = new Howl({
       src: [path],
       preload: true,
-      volume: settings.masterVolume,
+      volume: initialVolume,
       loop: shouldLoop,
     });
 
@@ -206,13 +212,18 @@ export function playSound(
     console.error(`Sound path not found: ${path}`);
     return;
   }
-
   // Use existing sound instance or create a new one
   if (!soundInstances[key]) {
     try {
+      let initialVolume = settings.masterVolume;
+      // Specifically reduce volume for the results reveal sound
+      if (path === SOUND_PATHS.resultsReveal) {
+        initialVolume = settings.masterVolume * 0.3;
+      }
+
       soundInstances[key] = new Howl({
         src: [path],
-        volume: settings.masterVolume,
+        volume: initialVolume,
         loop: loop,
         html5: true, // Add this to help with mobile playback and concurrent sounds
         preload: true,
@@ -235,9 +246,16 @@ export function playSound(
       loopingSounds.delete(key);
     }
   }
-
   // Update volume based on current settings
-  soundInstances[key].volume(settings.masterVolume);
+  let volumeToUse = settings.masterVolume;
+  // Specifically reduce volume for the results reveal sound
+  if (path === SOUND_PATHS.resultsReveal) {
+    // Reduce to 30% of the master volume (lowered from 50%)
+    volumeToUse = settings.masterVolume * 0.3;
+    console.log(`Reducing volume for results reveal sound to ${volumeToUse}`);
+  }
+
+  soundInstances[key].volume(volumeToUse);
 
   // If sound is already playing and it's a looping sound, don't restart it
   if (soundInstances[key].playing() && loop) {
@@ -298,8 +316,16 @@ export function stopAllSounds(): void {
 
 // Update all sound volumes based on master volume
 export function updateAllVolumes(masterVolume: number): void {
-  Object.values(soundInstances).forEach((sound) => {
-    sound.volume(masterVolume);
+  Object.entries(soundInstances).forEach(([key, sound]) => {
+    // Find the path for this sound instance
+    const path = SOUND_PATHS[key as keyof typeof SOUND_PATHS];
+    // Apply volume adjustment for specific sounds
+    let volumeToUse = masterVolume;
+    if (path === SOUND_PATHS.resultsReveal) {
+      volumeToUse = masterVolume * 0.3;
+    }
+
+    sound.volume(volumeToUse);
   });
 }
 

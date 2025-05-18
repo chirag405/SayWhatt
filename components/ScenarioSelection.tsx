@@ -131,8 +131,7 @@ export function ScenarioSelection({
     const secs = seconds % 60;
     return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
-
-  // Enhanced waiting screen for non-deciders
+  // Enhanced waiting screen for non-deciders during scenario selection
   if (!isDecider && !currentScenario) {
     return (
       <div className="flex flex-col items-center justify-center h-full px-4">
@@ -311,38 +310,60 @@ export function ScenarioSelection({
                 </GradientButton>
               </Card>
             </div>
-          ) : (
-            currentScenario && (
-              <div className="w-full">
-                <Card className="border border-purple-500/40 bg-slate-800 p-6">
-                  <div className="text-center mb-4">
-                    <div className="inline-flex items-center px-4 py-2 bg-purple-900/40 rounded-full border border-purple-500/40 mb-4">
-                      <span className="text-purple-200 text-sm font-medium">
-                        Category:
-                      </span>
-                      <span className="ml-2 text-white font-bold">
-                        {category}
-                      </span>
-                    </div>
+          ) : currentScenario ? (
+            <div className="w-full">
+              <Card className="border border-purple-500/40 bg-slate-800 p-6">
+                <div className="text-center mb-4">
+                  <div className="inline-flex items-center px-4 py-2 bg-purple-900/40 rounded-full border border-purple-500/40 mb-4">
+                    <span className="text-purple-200 text-sm font-medium">
+                      Category:
+                    </span>
+                    <span className="ml-2 text-white font-bold">
+                      {category}
+                    </span>
                   </div>
-                  <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 p-6 rounded-lg border border-purple-500/30">
-                    <p className="text-2xl mb-4 text-white font-bold">
-                      {currentScenario.scenario_text}
+                </div>
+                <div className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 p-6 rounded-lg border border-purple-500/30">
+                  <p className="text-2xl mb-4 text-white font-bold">
+                    {currentScenario.scenario_text}
+                  </p>
+                </div>
+                {currentTurn?.context && (
+                  <div className="p-4 mt-4 bg-slate-900/70 border border-purple-500/40 rounded-lg">
+                    <p className="text-sm text-purple-100">
+                      <span className="font-semibold text-white">Context:</span>{" "}
+                      {currentTurn.context}
                     </p>
                   </div>
-                  {currentTurn?.context && (
-                    <div className="p-4 mt-4 bg-slate-900/70 border border-purple-500/40 rounded-lg">
-                      <p className="text-sm text-purple-100">
-                        <span className="font-semibold text-white">
-                          Context:
-                        </span>{" "}
-                        {currentTurn.context}
-                      </p>
-                    </div>
-                  )}
-                </Card>
-              </div>
-            )
+                )}
+              </Card>
+            </div>
+          ) : (
+            // Show a waiting message when decider is selecting
+            <div className="w-full">
+              <Card className="border border-purple-500/40 bg-slate-800 p-6">
+                <div className="text-center mb-4">
+                  <div className="inline-flex items-center px-4 py-2 bg-purple-900/40 rounded-full border border-purple-500/40 mb-4">
+                    <span className="text-purple-200 text-sm font-medium">
+                      Category:
+                    </span>
+                    <span className="ml-2 text-white font-bold">
+                      {category}
+                    </span>
+                  </div>
+                </div>
+                <div className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 p-8 rounded-lg border border-purple-500/30 flex flex-col items-center justify-center">
+                  <div className="w-12 h-12 border-4 border-t-purple-500 border-purple-300/30 rounded-full animate-spin mb-6"></div>
+                  <p className="text-xl text-white font-bold mb-2">
+                    {currentDecider?.nickname || "The Decider"} is selecting a
+                    scenario...
+                  </p>
+                  <p className="text-purple-200 text-sm">
+                    Please wait while they make their choice
+                  </p>
+                </div>
+              </Card>
+            </div>
           )}
         </div>
       </div>
