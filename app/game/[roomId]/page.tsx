@@ -19,14 +19,14 @@ import { useTabCloseHandler } from "@/utils/useTabCloseHandler";
 import { GameCompleted } from "@/components/GameCompleted";
 import { GameTimer } from "@/components/GameTimer";
 import { GameSidebar } from "@/components/GameSidebar";
-import Sparkles from "@/components/ui/Sparkles";
 import { Card } from "@/components/ui/card";
 import { GradientButton } from "@/components/ui/gradient-button";
 import { GlowingText } from "@/components/ui/glowing-text";
 import { SoundSettings } from "@/components/SoundSettings";
 import { CardContainer, CardBody, CardItem } from "@/components/ui/3d-card";
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
-import { Vortex } from "@/components/ui/vortex";
+// import { Vortex } from "@/components/ui/vortex";
+import { CosmicParticlesBackground } from "@/components/ui/cosmic-particles-background";
 
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 
@@ -376,10 +376,11 @@ export default function GameScreen() {
       supabase.removeChannel(playerDepartureChannel);
     };
   }, [roomId, currentUser?.id, fetchRoomById]);
-
   // Data initialization and subscriptions
   useEffect(() => {
     if (!roomId) return;
+
+    // Removed duplicate reload handler - now using the universal ReloadHandler component
 
     let mounted = true;
     const cleanupFunctions: (() => void)[] = [];
@@ -474,11 +475,9 @@ export default function GameScreen() {
     if (!currentTurn || !currentRound) {
       return (
         <div className="flex flex-col items-center justify-center h-full">
-          <Sparkles>
-            <GlowingText className="text-2xl font-bold text-purple-600">
-              Waiting for game to start...
-            </GlowingText>
-          </Sparkles>
+          <GlowingText className="text-2xl font-bold text-purple-600">
+            Waiting for game to start...
+          </GlowingText>
           <motion.div
             animate={{ scale: [1, 1.05, 1] }}
             transition={{ duration: 2, repeat: Infinity }}
@@ -560,23 +559,32 @@ export default function GameScreen() {
       setIsExiting(false);
     }
   };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-black overflow-hidden relative flex items-center justify-center">
         {/* Background Effects */}
-        <Vortex
-          backgroundColor="black"
+        <CosmicParticlesBackground
+          particleColors={[
+            "rgba(59, 130, 246, 0.6)",
+            "rgba(139, 92, 246, 0.6)",
+            "rgba(236, 72, 153, 0.6)",
+            "rgba(16, 185, 129, 0.6)",
+          ]}
+          baseHue={260}
+          particleCount={80}
+          connectionDistance={150}
+        />
+        {/* <Vortex
+          backgroundColor="transparent"
           className="fixed inset-0 w-full h-full z-0"
           particleColors={["#3b82f6", "#8b5cf6", "#ec4899", "#10b981"]}
           rangeY={200}
           baseHue={260}
-        />
+        /> */}
 
         <CardContainer className="relative z-10">
           <CardBody className="bg-slate-900/75 backdrop-blur-xl border border-slate-700/80 rounded-2xl p-8 md:p-10 shadow-2xl shadow-purple-600/40 group/card">
             <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover/card:border-purple-500/70 transition-all duration-500 pointer-events-none" />
-
             <CardItem translateZ={60} className="mb-6 flex justify-center">
               <div className="relative">
                 <div className="w-20 h-20 border-4 border-b-purple-500 border-r-blue-500 border-t-pink-500 border-l-transparent rounded-full animate-spin"></div>
@@ -584,21 +592,17 @@ export default function GameScreen() {
                   <Zap className="h-8 w-8 text-purple-400" />
                 </div>
               </div>
-            </CardItem>
-
+            </CardItem>{" "}
             <CardItem translateZ={80} className="text-center mb-6">
-              <Sparkles>
-                <TextGenerateEffect
-                  words="Entering Game Matrix"
-                  className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-br from-cyan-400 via-purple-500 to-pink-500 pb-2"
-                  duration={0.7}
-                />
-              </Sparkles>
+              <TextGenerateEffect
+                words="Entering Game Matrix"
+                className="text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-br from-cyan-400 via-purple-500 to-pink-500 pb-2"
+                duration={0.7}
+              />
               <p className="text-md text-purple-300 mt-2">
                 Preparing your gaming experience...
               </p>
             </CardItem>
-
             <CardItem translateZ={40}>
               <motion.div
                 initial={{ width: "0%" }}
@@ -619,14 +623,14 @@ export default function GameScreen() {
     return (
       <div className="min-h-screen bg-black overflow-hidden relative flex items-center justify-center">
         {/* Background Effects */}
-        <Vortex
+        {/* <Vortex
           backgroundColor="black"
           className="fixed inset-0 w-full h-full z-0"
           particleColors={["#3b82f6", "#8b5cf6", "#ec4899", "#10b981"]}
           rangeY={200}
           baseHue={260}
           darkMode={true}
-        />
+        /> */}
 
         <CardContainer className="relative z-10 max-w-lg">
           <CardBody className="bg-slate-900/75 backdrop-blur-xl border border-red-500/30 rounded-2xl p-8 shadow-2xl">
@@ -657,17 +661,27 @@ export default function GameScreen() {
   }
 
   if (!currentGame || !currentUser || !currentRoom) return null;
-
   return (
     <div className="min-h-screen bg-black overflow-hidden relative">
       {/* Background Effects */}
-      <Vortex
-        backgroundColor="black"
+      <CosmicParticlesBackground
+        particleColors={[
+          "rgba(59, 130, 246, 0.6)",
+          "rgba(139, 92, 246, 0.6)",
+          "rgba(236, 72, 153, 0.6)",
+          "rgba(16, 185, 129, 0.6)",
+        ]}
+        baseHue={260}
+        particleCount={80}
+        connectionDistance={150}
+      />
+      {/* <Vortex
+        backgroundColor="transparent"
         className="fixed inset-0 w-full h-full z-0"
         particleColors={["#3b82f6", "#8b5cf6", "#ec4899", "#10b981"]}
         rangeY={200}
         baseHue={260}
-      />
+      /> */}
 
       <Spotlight
         className="-top-40 left-0 md:left-60 md:-top-20 z-10"

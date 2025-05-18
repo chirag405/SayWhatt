@@ -10,10 +10,11 @@ import { createClient } from "@/utils/supabase/client";
 
 import { CardContainer, CardBody, CardItem } from "@/components/ui/3d-card"; // Updated import for TypeScript support
 
-import { Vortex } from "@/components/ui/vortex"; // NEW
+// import { Vortex } from "@/components/ui/vortex"; // NEW
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect"; // NEW
 import { Button as AceternityButton } from "@/components/ui/moving-border"; // NEW
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient"; // NEW (Optional for extra flair)
+import { CosmicParticlesBackground } from "@/components/ui/cosmic-particles-background";
 // Lucide Icons
 import {
   Users,
@@ -286,25 +287,38 @@ export default function LobbyScreen() {
         console.error("Failed to copy:", err);
       });
   };
-
   useEffect(() => {
-    // Reset state on navigate away
+    // Reset state on navigate away or reload
     return () => {
       const pathname = window.location.pathname;
       if (!pathname.includes("/game/")) resetState();
     };
   }, [resetState]);
 
+  // Removed duplicate reload handler - now using the universal ReloadHandler component
+
   if (!currentRoom || !currentUser) {
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        {/* Background Effects */}
+        <CosmicParticlesBackground
+          particleColors={[
+            "rgba(59, 130, 246, 0.6)",
+            "rgba(139, 92, 246, 0.6)",
+            "rgba(236, 72, 153, 0.6)",
+            "rgba(16, 185, 129, 0.6)",
+          ]}
+          baseHue={260}
+          particleCount={80}
+          connectionDistance={150}
+        />
         {/* Single Vortex component for the loading state */}
-        <Vortex
-          backgroundColor="black"
+        {/* <Vortex
+          backgroundColor="transparent"
           className="fixed inset-0 w-full h-full z-0"
           baseHue={260}
           rangeY={200}
-        />
+        /> */}
 
         <CardContainer className="relative z-10">
           <CardBody className="bg-slate-900/70 backdrop-blur-lg border border-slate-700 rounded-2xl p-8 shadow-2xl shadow-purple-500/30">
@@ -333,13 +347,25 @@ export default function LobbyScreen() {
   console.log("are u the host ", isHost);
   return (
     <div className="min-h-screen bg-black p-4 md:p-6 lg:p-8 overflow-hidden relative">
-      <Vortex
-        backgroundColor="black"
+      {/* Background Effects */}
+      <CosmicParticlesBackground
+        particleColors={[
+          "rgba(59, 130, 246, 0.6)",
+          "rgba(139, 92, 246, 0.6)",
+          "rgba(236, 72, 153, 0.6)",
+          "rgba(16, 185, 129, 0.6)",
+        ]}
+        baseHue={260}
+        particleCount={80}
+        connectionDistance={150}
+      />
+      {/* <Vortex
+        backgroundColor="transparent"
         className="fixed inset-0 w-full h-full z-0"
         particleColors={["#3b82f6", "#8b5cf6", "#ec4899", "#10b981"]}
         rangeY={200}
         baseHue={260}
-      />
+      /> */}
 
       <Spotlight
         className="-top-40 -left-20 md:left-60 md:-top-20 z-[1]"

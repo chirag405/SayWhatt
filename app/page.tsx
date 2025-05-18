@@ -6,13 +6,13 @@ import { motion, AnimatePresence } from "framer-motion";
 
 // Aceternity UI Components
 
-import { Sparkles as SparklesCore } from "@/components/ui/Sparkles";
 import { Spotlight } from "@/components/ui/spotlight";
 
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
 import { CardContainer, CardBody, CardItem } from "@/components/ui/3d-card";
-import { Vortex } from "@/components/ui/vortex";
+// import { Vortex } from "@/components/ui/vortex";
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
+import { CosmicParticlesBackground } from "@/components/ui/cosmic-particles-background";
 
 // Custom Components
 import GameStatistics from "@/components/GameStats";
@@ -56,9 +56,15 @@ export default function HomeScreen() {
   const playRickRoll = () => {
     playSound(SOUND_PATHS.rickRoll, "results", false);
   };
-
   useEffect(() => {
     resetState();
+
+    // Clear any reload detection flags when reaching home page
+    if (typeof window !== "undefined") {
+      sessionStorage.removeItem("pageUnloadTime");
+      sessionStorage.removeItem("lastPathname");
+      sessionStorage.removeItem("lastLocation");
+    }
 
     // Preload sounds when the component mounts
     preloadSounds();
@@ -165,12 +171,22 @@ export default function HomeScreen() {
       transition: { type: "spring", stiffness: 500, damping: 15 },
     },
   };
-
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {" "}
       {/* Background Effects */}
       <div className="fixed inset-0 w-full h-full z-0 bg-black"></div>
+      {/* Particles Background */}
+      <CosmicParticlesBackground
+        particleColors={[
+          "rgba(59, 130, 246, 0.6)",
+          "rgba(139, 92, 246, 0.6)",
+          "rgba(236, 72, 153, 0.6)",
+          "rgba(16, 185, 129, 0.6)",
+        ]}
+        baseHue={260}
+        particleCount={80}
+        connectionDistance={150}
+      />
       <Spotlight
         className="-top-40 left-0 md:left-60 md:-top-20 z-10"
         fill="blue"
