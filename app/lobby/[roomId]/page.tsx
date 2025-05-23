@@ -705,10 +705,11 @@ export default function LobbyScreen() {
                               {player.nickname.charAt(0).toUpperCase()}
                             </CardItem>
                             <div className="flex flex-col">
+                              {" "}
                               <CardItem
                                 translateZ={5}
                                 as="span"
-                                className="font-medium text-slate-100 text-lg"
+                                className="font-medium text-slate-100 text-lg font-special-elite"
                                 onClick={() => {}}
                                 whileHover={{}}
                               >

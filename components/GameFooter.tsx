@@ -60,7 +60,6 @@ export default function GameFooter({ className = "" }: GameFooterProps) {
       navigator.clipboard.writeText(window.location.href);
     }
   };
-
   const socialLinks = [
     {
       id: "discord",
@@ -84,7 +83,7 @@ export default function GameFooter({ className = "" }: GameFooterProps) {
       id: "linkedin",
       icon: <Linkedin className="w-5 h-5" />,
       label: "LinkedIn",
-      href: "linkedin.com/in/chirag404", // Replace with your LinkedIn profile
+      href: "https://linkedin.com/in/chirag404", // Replace with your LinkedIn profile
       color: "from-blue-600 to-blue-800",
       hoverColor: "hover:text-blue-500",
       description: "Professional network",
@@ -205,12 +204,17 @@ export default function GameFooter({ className = "" }: GameFooterProps) {
                     onHoverEnd={() => setHoveredItem(null)}
                     className="relative"
                   >
+                    {" "}
                     <HoverBorderGradient
                       containerClassName="rounded-xl"
                       className="p-3 bg-slate-800/70 hover:bg-slate-700/70 transition-all duration-300"
                     >
                       <a
-                        href={social.href}
+                        href={
+                          social.href.startsWith("http")
+                            ? social.href
+                            : `https://${social.href}`
+                        }
                         target="_blank"
                         rel="noopener noreferrer"
                         className={`block text-slate-300 ${social.hoverColor} transition-colors duration-300`}
@@ -218,7 +222,6 @@ export default function GameFooter({ className = "" }: GameFooterProps) {
                         {social.icon}
                       </a>
                     </HoverBorderGradient>
-
                     <AnimatePresence>
                       {hoveredItem === social.id && (
                         <motion.div

@@ -478,90 +478,40 @@ export default function GameScreen() {
     if (isProcessingAI) {
       return (
         <div className="flex flex-col items-center justify-center h-full">
-          <GlowingText className="text-2xl font-bold text-purple-600">
-            Processing AI responses...
+          <GlowingText className="text-3xl font-bold text-red-500 mb-2">
+            🧪 The MethHead is deciding your fate... 💀
+          </GlowingText>
+          <GlowingText className="text-xl font-semibold text-orange-400 mb-6">
+            ⚠️ Get ready to be unfair! 🔥
           </GlowingText>
           <motion.div
-            animate={{ scale: [1, 1.05, 1] }}
+            animate={{
+              scale: [1, 1.1, 1],
+              rotate: [0, 5, -5, 0],
+            }}
+            transition={{
+              duration: 1.5,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          >
+            <div className="relative">
+              <div className="w-20 h-20 border-4 border-t-red-500 border-orange-300 rounded-full animate-spin" />
+              <div
+                className="absolute inset-0 w-20 h-20 border-4 border-b-yellow-500 border-transparent rounded-full animate-spin animate-reverse"
+                style={{ animationDuration: "1s" }}
+              />
+            </div>
+          </motion.div>
+          <motion.div
+            className="mt-4 text-lg text-gray-300"
+            animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
-            <div className="w-16 h-16 border-4 border-t-purple-500 border-purple-300 rounded-full animate-spin mt-4" />
+            💊 Cooking up chaos... 🌪️
           </motion.div>
         </div>
       );
-    }
-
-    if (!currentTurn || !currentRound) {
-      return (
-        <div className="flex flex-col items-center justify-center h-full">
-          <GlowingText className="text-2xl font-bold text-purple-600">
-            Waiting for game to start...
-          </GlowingText>
-          <motion.div
-            animate={{ scale: [1, 1.05, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            <div className="w-16 h-16 border-4 border-t-purple-500 border-purple-300 rounded-full animate-spin" />
-          </motion.div>
-        </div>
-      );
-    }
-
-    const commonProps = {
-      isDecider,
-      currentDecider: currentGame!.players.find(
-        (p) => p.id === currentTurn.decider_id
-      ),
-    };
-
-    const categorySelectionProps = {
-      roundId: currentRound.id,
-      turnId: currentTurn.id,
-      userId: currentUser?.id || "",
-      ...commonProps,
-    };
-
-    const scenarioSelectionProps = {
-      turnId: currentTurn.id,
-      userId: currentUser?.id || "",
-      category: currentTurn.category || "",
-      ...commonProps,
-    };
-
-    const answerSubmissionProps = {
-      turnId: currentTurn.id,
-      playerId: currentUser?.id || "",
-      scenario: currentScenario,
-      timeLimit: currentRoom?.time_limit || 30,
-      timerEnd: timerEnd,
-      ...commonProps,
-    };
-
-    const votingPhaseProps = {
-      turnId: currentTurn.id,
-      currentUserId: currentUser?.id || "",
-      ...commonProps,
-    };
-
-    switch (currentTurn.status) {
-      case "selecting_category":
-        return <CategorySelection {...categorySelectionProps} />;
-      case "selecting_scenario":
-        return <ScenarioSelection {...scenarioSelectionProps} />;
-      case "answering":
-        return <AnswerSubmission {...answerSubmissionProps} />;
-      case "voting":
-        return <VotingPhase {...votingPhaseProps} />;
-      default:
-        return (
-          <div className="text-center">
-            <GlowingText className="text-2xl font-bold mb-4">
-              {currentTurn.status === "completed"
-                ? "Turn Completed!"
-                : "Waiting..."}
-            </GlowingText>
-          </div>
-        );
     }
   };
 

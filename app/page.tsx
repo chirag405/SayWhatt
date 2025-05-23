@@ -199,7 +199,9 @@ export default function HomeScreen() {
         fill="blue"
       />
       {/* Title */}
-      <div className="w-full max-w-4xl text-center relative z-10 mb-4 md:mb-8"> {/* Adjusted mb */}
+      <div className="w-full max-w-4xl text-center relative z-10 mb-4 md:mb-8">
+        {" "}
+        {/* Adjusted mb */}
         <GamifiedTitle title="SayWhat" />
       </div>
       {/* Main Content */}
@@ -290,17 +292,25 @@ export default function HomeScreen() {
                         <div>
                           <div className="mb-2.5 flex items-center text-base">
                             <Users className="w-5 h-5 mr-2.5 text-purple-400 flex-shrink-0" />
-                            <TextGenerateEffect words="Your Nickname" className="text-slate-300 text-base" duration={0.3}/>
+                            <TextGenerateEffect
+                              words="Your Nickname"
+                              className="text-slate-300 text-base"
+                              duration={0.3}
+                            />
                           </div>
                           <motion.input
-                            whileFocus={{ scale: 1.02, borderColor: "#a78bfa", boxShadow: "0 0 15px rgba(167, 139, 250, 0.5)" }}
+                            whileFocus={{
+                              scale: 1.02,
+                              borderColor: "#a78bfa",
+                              boxShadow: "0 0 15px rgba(167, 139, 250, 0.5)",
+                            }}
                             type="text"
                             value={nickname}
                             onChange={(e) => {
                               setNickname(e.target.value);
                               playTypingSound();
                             }}
-                            className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-lg text-purple-300 text-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none placeholder-slate-500 shadow-[0_0_0px_theme(colors.purple.400)] focus:shadow-[0_0_15px_theme(colors.purple.300)] transition-shadow duration-300"
+                            className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-lg text-purple-300 text-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none placeholder-slate-500 shadow-[0_0_0px_theme(colors.purple.400)] focus:shadow-[0_0_15px_theme(colors.purple.300)] transition-shadow duration-300 font-special-elite typewriter-cursor"
                             disabled={isLoading}
                             placeholder="Enter your name..."
                           />
@@ -437,17 +447,25 @@ export default function HomeScreen() {
                         <div>
                           <div className="mb-2.5 flex items-center text-base">
                             <Users className="w-5 h-5 mr-2.5 text-teal-400 flex-shrink-0" />
-                            <TextGenerateEffect words="Your Nickname" className="text-slate-300 text-base" duration={0.3}/>
+                            <TextGenerateEffect
+                              words="Your Nickname"
+                              className="text-slate-300 text-base"
+                              duration={0.3}
+                            />
                           </div>
                           <motion.input
-                            whileFocus={{ scale: 1.02, borderColor: "#5eead4", boxShadow: "0 0 15px rgba(94, 234, 212, 0.5)" }}
+                            whileFocus={{
+                              scale: 1.02,
+                              borderColor: "#5eead4",
+                              boxShadow: "0 0 15px rgba(94, 234, 212, 0.5)",
+                            }}
                             type="text"
                             value={joinNickname}
                             onChange={(e) => {
                               setJoinNickname(e.target.value);
                               playTypingSound();
                             }}
-                            className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-lg text-teal-300 text-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none placeholder-slate-500 shadow-[0_0_0px_theme(colors.teal.400)] focus:shadow-[0_0_15px_theme(colors.teal.300)] transition-shadow duration-300"
+                            className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-lg text-teal-300 text-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none placeholder-slate-500 shadow-[0_0_0px_theme(colors.teal.400)] focus:shadow-[0_0_15px_theme(colors.teal.300)] transition-shadow duration-300 font-special-elite typewriter-cursor"
                             disabled={isLoading}
                             placeholder="Enter your name..."
                           />
