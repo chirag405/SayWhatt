@@ -48,8 +48,8 @@ export default function GameFooter({ className = "" }: GameFooterProps) {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "SayWhat - Amazing Word Guessing Game!",
-          text: "Check out this awesome word guessing game!",
+          title: "SayWhat - The Ultimate Word Association Game",
+          text: "Check out this awesome word guessing game where you test your vocabulary and quick thinking!",
           url: window.location.href,
         });
       } catch (err) {
@@ -66,7 +66,7 @@ export default function GameFooter({ className = "" }: GameFooterProps) {
       id: "discord",
       icon: <DiscordIcon />,
       label: "Discord",
-      href: "#", // Replace with your Discord profile/server
+      href: "https://discord.com/users/525254633766256651", // Replace with your Discord profile/server
       color: "from-indigo-500 to-purple-600",
       hoverColor: "hover:text-indigo-400",
       description: "Join the community",
@@ -75,7 +75,7 @@ export default function GameFooter({ className = "" }: GameFooterProps) {
       id: "twitter",
       icon: <Twitter className="w-5 h-5" />,
       label: "Twitter/X",
-      href: "#", // Replace with your Twitter/X profile
+      href: "https://x.com/Bng89289502", // Replace with your Twitter/X profile
       color: "from-blue-400 to-blue-600",
       hoverColor: "hover:text-blue-400",
       description: "Follow for updates",
@@ -84,7 +84,7 @@ export default function GameFooter({ className = "" }: GameFooterProps) {
       id: "linkedin",
       icon: <Linkedin className="w-5 h-5" />,
       label: "LinkedIn",
-      href: "#", // Replace with your LinkedIn profile
+      href: "linkedin.com/in/chirag404", // Replace with your LinkedIn profile
       color: "from-blue-600 to-blue-800",
       hoverColor: "hover:text-blue-500",
       description: "Professional network",
