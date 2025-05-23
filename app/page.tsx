@@ -53,6 +53,11 @@ export default function HomeScreen() {
     playSound(SOUND_PATHS.categorySelect, "category");
   };
 
+  // Play typing sound
+  const playTypingSound = () => {
+    playSound(SOUND_PATHS.typingKeypress, "typing", false);
+  };
+
   // Play rick roll sound
   const playRickRoll = () => {
     playSound(SOUND_PATHS.rickRoll, "results", false);
@@ -292,7 +297,10 @@ export default function HomeScreen() {
                             whileFocus={{ scale: 1.02, borderColor: "#8b5cf6" }}
                             type="text"
                             value={nickname}
-                            onChange={(e) => setNickname(e.target.value)}
+                            onChange={(e) => {
+                              setNickname(e.target.value);
+                              playTypingSound();
+                            }}
                             className="w-full p-4 bg-slate-800/50 border border-slate-700 rounded-lg text-white text-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                             disabled={isLoading}
                             placeholder="Enter your name"
@@ -414,9 +422,10 @@ export default function HomeScreen() {
                             whileFocus={{ scale: 1.02, borderColor: "#0ea5e9" }}
                             type="text"
                             value={roomCode}
-                            onChange={(e) =>
-                              setRoomCode(e.target.value.toUpperCase())
-                            }
+                            onChange={(e) => {
+                              setRoomCode(e.target.value.toUpperCase());
+                              playTypingSound();
+                            }}
                             className="w-full p-3 bg-slate-800/70 border border-slate-600 rounded-lg text-white uppercase tracking-widest font-mono focus:ring-2 focus:ring-cyan-500 focus:border-transparent outline-none"
                             disabled={isLoading}
                             maxLength={6}
@@ -435,7 +444,10 @@ export default function HomeScreen() {
                             whileFocus={{ scale: 1.02, borderColor: "#14b8a6" }}
                             type="text"
                             value={joinNickname}
-                            onChange={(e) => setJoinNickname(e.target.value)}
+                            onChange={(e) => {
+                              setJoinNickname(e.target.value);
+                              playTypingSound();
+                            }}
                             className="w-full p-3 bg-slate-800/50 border border-slate-700 rounded-lg text-white focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none"
                             disabled={isLoading}
                             placeholder="Enter your name"
