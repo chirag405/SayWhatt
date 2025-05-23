@@ -21,6 +21,7 @@ import { CardContainer, CardBody, CardItem } from "@/components/ui/3d-card";
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 import { playSound, stopAllSounds, SOUND_PATHS } from "@/utils/soundUtils";
+import GameFooter from "./GameFooter";
 
 // Fun avatar emojis for the game completion screen
 const AVATAR_EMOJIS = [
@@ -464,6 +465,7 @@ export function GameCompleted({ players }: GameCompletedProps) {
           )}
         </AnimatePresence>
       </CardBody>
+      <GameFooter />
     </CardContainer>
   );
 }
