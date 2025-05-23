@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Special+Elite&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -145,3 +146,17 @@
   will-change: transform;
   transform: translateZ(0);
 } */
+
+.font-special-elite {
+  font-family: 'Special Elite', monospace;
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent }
+  50% { border-color: orange; } /* Adjust color as needed */
+}
+
+.typewriter-cursor:focus {
+  border-right: .15em solid orange; /* Adjust size and color as needed */
+  animation: blink-caret .75s step-end infinite;
+}

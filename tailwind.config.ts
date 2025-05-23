@@ -21,6 +21,9 @@ const config = {
       },
     },
     extend: {
+      fontFamily: {
+        'special-elite': ['Special Elite', 'monospace'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
