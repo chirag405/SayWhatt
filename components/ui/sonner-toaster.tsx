@@ -12,8 +12,9 @@ export function Toaster() {
           color: "white",
           border: "1px solid rgba(139, 92, 246, 0.3)",
           backdropFilter: "blur(8px)",
-          fontWeight: "400",
-          fontSize: "0.925rem",
+          fontWeight: "500",
+          fontSize: "0.95rem",
+          fontFamily: "var(--font-rubik), sans-serif",
         },
       }}
     />

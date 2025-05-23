@@ -1,5 +1,5 @@
 import { hasEnvVars } from "@/utils/supabase/check-env-vars";
-import { Geist } from "next/font/google";
+import { Rubik } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import Link from "next/link";
 import "./globals.css";
@@ -14,9 +14,11 @@ export const metadata = {
   title: "SayWhat",
 };
 
-const geistSans = Geist({
+const rubikFont = Rubik({
   display: "swap",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-rubik",
 });
 
 export default function RootLayout({
@@ -25,8 +27,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={geistSans.className} suppressHydrationWarning>
-      <body className="bg-background text-foreground">
+    <html
+      lang="en"
+      className={`${rubikFont.className} ${rubikFont.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="bg-background text-foreground font-rubik">
         {children}
         <Toaster />
       </body>
