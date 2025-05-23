@@ -330,7 +330,7 @@ export function GameCompleted({ players }: GameCompletedProps) {
                                 backgroundColor: "rgba(139, 92, 246, 0.1)",
                               }}
                             >
-                              className={`flex-shrink-0 w-8 text-center font-mono font-bold">
+                              <div className="flex-shrink-0 w-8 text-center font-mono font-bold">
                                 {index === 0 ? (
                                   <Crown className="h-5 w-5 text-yellow-500 mx-auto" />
                                 ) : (
