@@ -192,6 +192,38 @@ export function SoundSettings() {
                   </div>
                 </div>
 
+                {/* Typing Sounds */}
+                <div className="flex items-center justify-between bg-slate-800/60 p-4 rounded-lg hover:bg-slate-800/90 transition-colors">
+                  <span className="text-md text-white">Typing Sounds</span>
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => handleCategoryToggle("typing")}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        handleCategoryToggle("typing");
+                      }
+                    }}
+                    className={`w-14 h-7 rounded-full transition-all ${
+                      settings.categories.typing // Use the 'typing' category here
+                        ? "bg-purple-600"
+                        : "bg-gray-600"
+                    } relative cursor-pointer`}
+                  >
+                    <motion.div
+                      animate={{
+                        x: settings.categories.typing ? 28 : 4, // Use the 'typing' category here
+                      }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 500,
+                        damping: 30,
+                      }}
+                      className="absolute w-5 h-5 rounded-full bg-white top-1"
+                    />
+                  </div>
+                </div>
+
                 {/* Category Sounds */}
                 <div className="flex items-center justify-between bg-slate-800/60 p-4 rounded-lg hover:bg-slate-800/90 transition-colors">
                   <span className="text-md text-white">

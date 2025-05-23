@@ -11,6 +11,7 @@ export const SOUND_PATHS = {
   resultsReveal: "/sounds/results-reveal.mp3",
   transition: "/sounds/transition.mp3",
   rickRoll: "/sounds/rick-roll.mp3",
+  typingKeypress: "/sounds/typing-keypress.mp3", // Add this line
 };
 
 // Sound category types for settings
@@ -20,7 +21,8 @@ export type SoundCategory =
   | "voting"
   | "results"
   | "copy"
-  | "start";
+  | "start"
+  | "typing"; // Add this line
 
 // Sound instances
 const soundInstances: Record<string, Howl> = {};
@@ -41,6 +43,7 @@ export interface SoundSettings {
     results: boolean;
     copy?: boolean;
     start?: boolean;
+    typing?: boolean; // Add this line
   };
 }
 
@@ -54,21 +57,43 @@ export const defaultSoundSettings: SoundSettings = {
     results: true,
     copy: true,
     start: true,
+    typing: true, // Add this line
   },
 };
 
 // Get sound settings from localStorage, or use defaults if not found
 export function getSoundSettings(): SoundSettings {
-  if (typeof window === "undefined") return defaultSoundSettings;
+  if (typeof window === "undefined") {
+    return {
+      ...defaultSoundSettings,
+      categories: { ...defaultSoundSettings.categories },
+    };
+  }
 
   const stored = localStorage.getItem("saywhat_sound_settings");
-  if (!stored) return defaultSoundSettings;
+  if (!stored) {
+    return {
+      ...defaultSoundSettings,
+      categories: { ...defaultSoundSettings.categories },
+    };
+  }
 
   try {
-    return JSON.parse(stored) as SoundSettings;
+    const settings = JSON.parse(stored) as SoundSettings;
+    // Ensure all default categories are present by merging with defaults
+    settings.categories = {
+      ...defaultSoundSettings.categories,
+      ...settings.categories,
+    };
+    return settings;
   } catch (e) {
     console.error("Error parsing sound settings:", e);
-    return defaultSoundSettings;
+    // When error occurs, return a fresh copy of defaultSoundSettings
+    // also ensuring all its categories are present (which they are by definition)
+    return {
+      ...defaultSoundSettings,
+      categories: { ...defaultSoundSettings.categories },
+    };
   }
 }
 

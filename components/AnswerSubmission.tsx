@@ -16,6 +16,7 @@ import {
   AlertCircle,
   SendHorizonal,
 } from "lucide-react";
+import { playSound, SOUND_PATHS } from "@/utils/soundUtils"; // Add this line
 
 interface AnswerSubmissionProps {
   turnId: string;
@@ -45,6 +46,16 @@ export function AnswerSubmission({
   const [error, setError] = useState<string | null>(null);
   const [isProcessingNextPhase, setIsProcessingNextPhase] = useState(false);
   const [showAIProcessing, setShowAIProcessing] = useState(false);
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Basic filtering: Don't play for modifier keys or navigation keys if desired,
+    // but for simplicity, we'll play on most keydowns for now.
+    // The sound category toggle and master volume will provide user control.
+    // A more advanced implementation could check event.key for specific characters.
+    if (!event.ctrlKey && !event.altKey && !event.metaKey) {
+      playSound(SOUND_PATHS.typingKeypress, "typing");
+    }
+  };
 
   // Check if this player has already submitted an answer
   useEffect(() => {
@@ -281,6 +292,7 @@ export function AnswerSubmission({
                 placeholder="Write your creative answer here..."
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
+                onKeyDown={handleKeyDown} // Add this line
                 disabled={hasSubmitted || isSubmitting}
               />
               <div className="flex flex-col gap-2">
