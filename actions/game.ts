@@ -545,31 +545,39 @@ Answer: "${answer.answer_text}"
       });
 
       const text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      console.log("Raw AI Response for answer ID", answer.id, ":", text);
 
       const scoreMatch = text.match(/Score:\s*(\d+)/);
       const feedbackMatch = text.match(/Feedback:\s*(.+)/);
 
       const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 5;
       const feedback = feedbackMatch?.[1] || "No feedback provided";
+      const ai_points = Math.min(10, Math.max(1, score));
+      console.log("Parsed Score:", score, "Parsed Feedback:", `"${feedback}"`, "AI Points to save:", ai_points, "for answer ID", answer.id);
 
-      const { data: updatedAnswer } = await supabase
+      const { data: updatedAnswerData, error: updateError } = await supabase
         .from("answers")
         .update({
           ai_response: feedback,
-          ai_points: Math.min(10, Math.max(1, score)),
+          ai_points: ai_points,
         })
         .eq("id", answer.id)
         .select();
 
-      if (updatedAnswer?.[0]) {
+      if (updateError) {
+        console.error("Error updating answer:", answer.id, updateError);
+      } else if (updatedAnswerData && updatedAnswerData.length > 0) {
+        console.log("Answer updated successfully:", updatedAnswerData[0]);
         await supabase.channel("public:answers").send({
           type: "broadcast",
           event: "answer_updated",
-          payload: { answer: updatedAnswer[0] },
+          payload: { answer: updatedAnswerData[0] },
         });
+      } else {
+        console.log("Answer update for ID:", answer.id, "did not return data, but no error reported.");
       }
     } catch (error) {
-      console.error("AI processing failed:", error);
+      console.error("AI processing failed for answer ID", answer.id, ":", error);
       const { data: errorAnswer } = await supabase
         .from("answers")
         .update({
@@ -653,6 +661,34 @@ export async function nextTurn(
       .single();
 
     if (!room) throw new Error("Room not found");
+
+    // --- BEGIN POINT ASSIGNMENT DIAGNOSTIC LOGGING ---
+    console.log(`[Point Diagnostics] nextTurn called for turnId: ${turnId}. Current turn number: ${currentTurn.turn_number}, Round number: ${round.round_number}`);
+
+    // Fetch answers for the current turn
+    const { data: turnAnswers, error: answersError } = await supabase
+      .from("answers")
+      .select("id, player_id, ai_points, vote_points")
+      .eq("turn_id", turnId);
+
+    if (answersError) {
+      console.error("[Point Diagnostics] Error fetching answers for turn:", turnId, answersError);
+    } else {
+      console.log("[Point Diagnostics] Answers for turn:", turnId, turnAnswers);
+    }
+
+    // Fetch all players in the room to see their total_points
+    const { data: roomPlayers, error: playersError } = await supabase
+      .from("players")
+      .select("id, nickname, total_points")
+      .eq("room_id", round.room_id);
+
+    if (playersError) {
+      console.error("[Point Diagnostics] Error fetching players for room:", round.room_id, playersError);
+    } else {
+      console.log("[Point Diagnostics] Player points in room:", round.room_id, roomPlayers);
+    }
+    // --- END POINT ASSIGNMENT DIAGNOSTIC LOGGING ---
 
     // First, exit voting phase
     await supabase

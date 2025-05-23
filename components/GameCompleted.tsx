@@ -225,7 +225,7 @@ export function GameCompleted({ players }: GameCompletedProps) {
       perspective={1500}
       className="w-full max-w-4xl mx-auto h-full"
     >
-      <CardBody className="bg-slate-900/60 backdrop-blur-md border border-purple-500/20 rounded-2xl p-4 shadow-lg group/card">
+      <CardBody className="bg-slate-900/60 backdrop-blur-md border border-purple-500/20 rounded-2xl p-6 md:p-8 shadow-lg group/card">
         <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover/card:border-amber-500/50 transition-all duration-500 pointer-events-none" />
 
         <AnimatePresence mode="wait">
@@ -239,7 +239,7 @@ export function GameCompleted({ players }: GameCompletedProps) {
               animate="show"
             >
               {/* Compact Victory Banner */}
-              <motion.div variants={item} className="text-center mb-4">
+              <motion.div variants={item} className="text-center mb-6 md:mb-8">
                 <div className="relative">
                   <div className="absolute inset-0 bg-gradient-to-b from-yellow-500/20 to-transparent blur-3xl rounded-full transform scale-150 -z-10" />
                   <Sparkles>
@@ -258,14 +258,14 @@ export function GameCompleted({ players }: GameCompletedProps) {
 
               {/* Condensed Layout with Winner and Rankings side by side for multi-player */}
               <div
-                className={`grid ${!isSinglePlayerMode ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"} gap-4`}
+                className={`grid ${!isSinglePlayerMode ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"} gap-6`}
               >
                 {/* Winner section */}
                 <motion.div variants={item}>
                   <CardItem translateZ={60}>
                     <HoverBorderGradient
                       containerClassName="w-full rounded-xl"
-                      className="p-3"
+                      className="p-4"
                       gradientClassName={
                         isSinglePlayerMode
                           ? "bg-gradient-to-r from-purple-500 via-blue-500 to-indigo-500"
@@ -311,18 +311,18 @@ export function GameCompleted({ players }: GameCompletedProps) {
                   <motion.div variants={item}>
                     <CardItem translateZ={50}>
                       <Card className="border-purple-500/20 bg-slate-800/50 backdrop-blur-sm overflow-hidden h-full">
-                        <div className="p-2 border-b border-purple-500/20 flex items-center gap-2">
-                          <Award className="h-4 w-4 text-purple-400" />
-                          <h3 className="font-bold text-sm text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
+                        <div className="p-3 border-b border-purple-500/20 flex items-center gap-2">
+                          <Award className="h-5 w-5 text-purple-400" />
+                          <h3 className="font-bold text-md text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
                             Final Rankings
                           </h3>
                         </div>
 
-                        <div className="divide-y divide-purple-500/10 max-h-36 overflow-y-auto">
+                        <div className="divide-y divide-purple-500/10 max-h-48 md:max-h-56 overflow-y-auto">
                           {sortedPlayers.slice(0, 5).map((player, index) => (
                             <motion.div
                               key={player.id}
-                              className={`flex items-center p-2 ${
+                              className={`flex items-center p-3 ${
                                 index === 0 ? "bg-amber-500/10" : ""
                               }`}
                               variants={item}
@@ -330,17 +330,17 @@ export function GameCompleted({ players }: GameCompletedProps) {
                                 backgroundColor: "rgba(139, 92, 246, 0.1)",
                               }}
                             >
-                              <div className="flex-shrink-0 w-6 text-center font-mono font-bold">
+                              className={`flex-shrink-0 w-8 text-center font-mono font-bold">
                                 {index === 0 ? (
-                                  <Crown className="h-4 w-4 text-yellow-500 mx-auto" />
+                                  <Crown className="h-5 w-5 text-yellow-500 mx-auto" />
                                 ) : (
                                   <span
-                                    className={`text-sm ${
+                                    className={`text-md ${
                                       index === 1
-                                        ? "text-slate-400"
+                                        ? "text-slate-300"
                                         : index === 2
-                                          ? "text-amber-700"
-                                          : "text-slate-500"
+                                          ? "text-amber-600"
+                                          : "text-slate-400"
                                     }`}
                                   >
                                     #{index + 1}
@@ -348,36 +348,36 @@ export function GameCompleted({ players }: GameCompletedProps) {
                                 )}
                               </div>
 
-                              <div className="flex-shrink-0 mx-2">
+                              <div className="flex-shrink-0 mx-3">
                                 <div
-                                  className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-xs ${
+                                  className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm ${
                                     index === 0
-                                      ? "bg-gradient-to-br from-yellow-400 to-amber-500 ring-1 ring-yellow-500/50"
+                                      ? "bg-gradient-to-br from-yellow-400 to-amber-500 ring-2 ring-yellow-500/60"
                                       : index === 1
-                                        ? "bg-gradient-to-br from-slate-400 to-slate-500"
+                                        ? "bg-gradient-to-br from-slate-400 to-slate-500 ring-1 ring-slate-500/50"
                                         : index === 2
-                                          ? "bg-gradient-to-br from-amber-700 to-amber-800"
-                                          : "bg-gradient-to-br from-slate-700 to-slate-800"
+                                          ? "bg-gradient-to-br from-amber-700 to-amber-800 ring-1 ring-amber-700/50"
+                                          : "bg-gradient-to-br from-slate-700 to-slate-800 ring-1 ring-slate-600/50"
                                   }`}
                                 >
-                                  <span className="text-xl">
+                                  <span className="text-2xl">
                                     {playerAvatars.get(player.id)?.emoji ||
                                       player.nickname[0].toUpperCase()}
                                   </span>
                                 </div>
                               </div>
 
-                              <div className="flex-1 truncate">
+                              <div className="flex-1 truncate min-w-0">
                                 <p
-                                  className={`font-medium text-sm truncate ${index === 0 ? "text-yellow-100" : "text-white"}`}
+                                  className={`font-semibold text-md truncate ${index === 0 ? "text-yellow-100" : "text-white"}`}
                                 >
                                   {player.nickname}
                                 </p>
                               </div>
 
-                              <div className="font-bold text-sm ml-1">
+                              <div className="font-bold text-md ml-2">
                                 <div
-                                  className={`px-2 py-0.5 rounded font-mono ${
+                                  className={`px-3 py-1 rounded-md font-mono ${
                                     index === 0
                                       ? "bg-amber-900/30 text-amber-300"
                                       : index === 1
@@ -401,20 +401,21 @@ export function GameCompleted({ players }: GameCompletedProps) {
 
               {/* For single player, show a compact stats card */}
               {isSinglePlayerMode && (
-                <motion.div variants={item} className="mt-4">
+                <motion.div variants={item} className="mt-6">
                   <CardItem translateZ={40}>
                     <Card className="border-purple-500/20 bg-slate-800/50 backdrop-blur-sm overflow-hidden">
-                      <div className="p-3 flex items-center gap-2">
+                      <div className="p-4 flex items-center gap-4">
                         <div className="flex-shrink-0">
-                          <div className="w-12 h-12 rounded-full flex items-center justify-center text-white text-xl bg-gradient-to-br from-blue-500 to-indigo-500 ring-1 ring-blue-500/50">
-                            {winner.nickname[0].toUpperCase()}
+                          <div className="w-14 h-14 rounded-full flex items-center justify-center text-white text-2xl bg-gradient-to-br from-blue-500 to-indigo-500 ring-2 ring-blue-500/50 shadow-lg">
+                            {playerAvatars.get(winner.id)?.emoji ||
+                              winner.nickname[0].toUpperCase()}
                           </div>
                         </div>
                         <div className="flex-1">
-                          <h4 className="font-medium text-white">
-                            Lone Survivor
+                          <h4 className="font-semibold text-lg text-white">
+                            Lone Survivor Mission Stats
                           </h4>
-                          <div className="inline-block bg-blue-900/30 text-blue-300 border border-blue-500/30 rounded-lg py-1 px-2 mt-1 font-mono text-sm">
+                          <div className="inline-block bg-blue-900/40 text-blue-200 border border-blue-500/40 rounded-lg py-1.5 px-3 mt-1.5 font-mono text-md shadow">
                             {winner.total_points} points earned
                           </div>
                         </div>
@@ -427,12 +428,12 @@ export function GameCompleted({ players }: GameCompletedProps) {
               {/* Action buttons */}
               <motion.div
                 variants={item}
-                className="grid grid-cols-2 gap-3 mt-4"
+                className="grid grid-cols-2 gap-4 mt-6 md:mt-8"
               >
                 <CardItem translateZ={30}>
                   <GradientButton
                     onClick={handleShareResults}
-                    className="w-full py-2 flex items-center justify-center text-sm"
+                    className="w-full py-3 flex items-center justify-center text-md"
                     gradientFrom="from-blue-500"
                     gradientTo="to-indigo-600"
                   >
@@ -444,12 +445,12 @@ export function GameCompleted({ players }: GameCompletedProps) {
                 <CardItem translateZ={30}>
                   <GradientButton
                     onClick={handleResetAndReturn}
-                    className="w-full py-2 flex items-center justify-center text-sm"
+                    className="w-full py-3 flex items-center justify-center text-md"
                     gradientFrom="from-slate-500"
                     gradientTo="to-slate-700"
                     variant="secondary"
                   >
-                    <Home className="w-4 h-4 mr-1" />
+                    <Home className="w-5 h-5 mr-2" />
                     Return Home
                   </GradientButton>
                 </CardItem>
@@ -457,9 +458,9 @@ export function GameCompleted({ players }: GameCompletedProps) {
 
               <motion.div
                 variants={item}
-                className="text-center mt-2 text-xs text-slate-500"
+                className="text-center mt-4 text-sm text-slate-400"
               >
-                Auto-exit in 60s
+                Auto-exit in 60 seconds
               </motion.div>
             </motion.div>
           )}

@@ -27,6 +27,7 @@ interface GameStoreState {
   answers: Answer[];
   votes: Vote[];
   timerEnd: Date | null;
+  isProcessingAI: boolean;
   // disconnectedPlayers: string[];
 
   subscribeToGame: (roomId: string) => () => void;
@@ -77,6 +78,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   answers: [],
   votes: [],
   timerEnd: null,
+  isProcessingAI: false,
   disconnectedPlayers: [],
 
   subscribeToGame: (roomId) => {
@@ -668,6 +670,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   },
 
   processAIResponses: async (turnId) => {
+    set({ isProcessingAI: true });
     try {
       console.log("Processing AI responses for turn:", turnId);
 
@@ -692,6 +695,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     } catch (error) {
       console.error("Error processing AI responses:", error);
       throw error;
+    } finally {
+      set({ isProcessingAI: false });
     }
   },
 

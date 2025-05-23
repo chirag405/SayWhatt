@@ -105,6 +105,7 @@ export default function GameScreen() {
     subscribeToScenarios,
     timerEnd,
     getScenarioById: storeGetScenarioById,
+    isProcessingAI,
   } = useGameStore();
 
   // Computed values
@@ -473,6 +474,22 @@ export default function GameScreen() {
   // Prop definitions
   const renderGamePhase = () => {
     if (gameCompleted) return <GameCompleted players={currentGame.players} />;
+
+    if (isProcessingAI) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full">
+          <GlowingText className="text-2xl font-bold text-purple-600">
+            Processing AI responses...
+          </GlowingText>
+          <motion.div
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <div className="w-16 h-16 border-4 border-t-purple-500 border-purple-300 rounded-full animate-spin mt-4" />
+          </motion.div>
+        </div>
+      );
+    }
 
     if (!currentTurn || !currentRound) {
       return (
