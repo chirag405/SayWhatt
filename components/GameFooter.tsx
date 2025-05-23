@@ -135,7 +135,7 @@ export default function GameFooter({ className = "" }: GameFooterProps) {
   ];
 
   return (
-    <div className={`w-full relative ${className}`}>
+    <div className={`w-full relative mt-6 md:mt-8 ${className}`}>
       <motion.div
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
@@ -243,7 +243,7 @@ export default function GameFooter({ className = "" }: GameFooterProps) {
 
             {/* Action Items Section */}
             <CardItem translateZ={40} className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
                 {actionItems.map((item) => (
                   <motion.div
                     key={item.id}

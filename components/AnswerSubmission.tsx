@@ -288,7 +288,7 @@ export function AnswerSubmission({
           <div className="flex-1">
             <div className="relative group h-full flex flex-col">
               <textarea
-                className="relative w-full h-full min-h-[120px] p-4 rounded-lg bg-slate-800/90 border border-purple-500/30 text-white placeholder-gray-400 focus:border-purple-400 focus:outline-none focus:ring focus:ring-purple-500/30 transition-all resize-none mb-4 font-special-elite typewriter-cursor"
+                className="relative w-full h-full min-h-[120px] p-4 rounded-lg bg-slate-800/90 border border-purple-500/30 text-white text-lg placeholder-gray-400 placeholder:text-lg focus:border-purple-400 focus:outline-none transition-all resize-none mb-4 font-special-elite typewriter-cursor"
                 placeholder="Write your creative answer here..."
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
