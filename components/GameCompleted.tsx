@@ -219,21 +219,16 @@ export function GameCompleted({ players }: GameCompletedProps) {
       </GlowingText>
     </motion.div>
   );
-
   return (
-    <CardContainer
-      perspective={1500}
-      className="w-full max-w-4xl mx-auto h-full"
-    >
+    <CardContainer perspective={1500} className="w-full h-full">
       <CardBody className="bg-slate-900/60 backdrop-blur-md border border-purple-500/20 rounded-2xl p-6 md:p-8 shadow-lg group/card">
         <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover/card:border-amber-500/50 transition-all duration-500 pointer-events-none" />
-
         <AnimatePresence mode="wait">
           {isLoading ? (
             <LoadingAnimation />
           ) : (
             <motion.div
-              className="max-w-2xl mx-auto"
+              className="max-w-5xl mx-auto"
               variants={container}
               initial="hidden"
               animate="show"
@@ -254,11 +249,10 @@ export function GameCompleted({ players }: GameCompletedProps) {
                     />
                   </Sparkles>
                 </div>
-              </motion.div>
-
+              </motion.div>{" "}
               {/* Condensed Layout with Winner and Rankings side by side for multi-player */}
               <div
-                className={`grid ${!isSinglePlayerMode ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"} gap-6`}
+                className={`grid ${!isSinglePlayerMode ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"} gap-6 max-w-5xl mx-auto`}
               >
                 {/* Winner section */}
                 <motion.div variants={item}>
@@ -316,10 +310,9 @@ export function GameCompleted({ players }: GameCompletedProps) {
                           <h3 className="font-bold text-md text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
                             Final Rankings
                           </h3>
-                        </div>
-
-                        <div className="divide-y divide-purple-500/10 max-h-48 md:max-h-56 overflow-y-auto">
-                          {sortedPlayers.slice(0, 5).map((player, index) => (
+                        </div>{" "}
+                        <div className="divide-y divide-purple-500/10 max-h-60 md:max-h-80 overflow-y-auto">
+                          {sortedPlayers.map((player, index) => (
                             <motion.div
                               key={player.id}
                               className={`flex items-center p-3 ${
@@ -398,7 +391,6 @@ export function GameCompleted({ players }: GameCompletedProps) {
                   </motion.div>
                 )}
               </div>
-
               {/* For single player, show a compact stats card */}
               {isSinglePlayerMode && (
                 <motion.div variants={item} className="mt-6">
@@ -424,7 +416,6 @@ export function GameCompleted({ players }: GameCompletedProps) {
                   </CardItem>
                 </motion.div>
               )}
-
               {/* Action buttons */}
               <motion.div
                 variants={item}
@@ -455,7 +446,6 @@ export function GameCompleted({ players }: GameCompletedProps) {
                   </GradientButton>
                 </CardItem>
               </motion.div>
-
               <motion.div
                 variants={item}
                 className="text-center mt-4 text-sm text-slate-400"
@@ -464,9 +454,11 @@ export function GameCompleted({ players }: GameCompletedProps) {
               </motion.div>
             </motion.div>
           )}
-        </AnimatePresence>
+        </AnimatePresence>{" "}
       </CardBody>
-      <GameFooter />
+      <div className="mt-6">
+        <GameFooter />
+      </div>
     </CardContainer>
   );
 }

@@ -513,6 +513,79 @@ export default function GameScreen() {
         </div>
       );
     }
+
+    if (!currentTurn || !currentRound) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full">
+          <GlowingText className="text-2xl font-bold text-purple-600">
+            Waiting for game to start...
+          </GlowingText>
+          <motion.div
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <div className="w-16 h-16 border-4 border-t-purple-500 border-purple-300 rounded-full animate-spin" />
+          </motion.div>
+        </div>
+      );
+    }
+
+    const commonProps = {
+      isDecider,
+      currentDecider: currentGame!.players.find(
+        (p) => p.id === currentTurn.decider_id
+      ),
+    };
+
+    const categorySelectionProps = {
+      roundId: currentRound.id,
+      turnId: currentTurn.id,
+      userId: currentUser?.id || "",
+      ...commonProps,
+    };
+
+    const scenarioSelectionProps = {
+      turnId: currentTurn.id,
+      userId: currentUser?.id || "",
+      category: currentTurn.category || "",
+      ...commonProps,
+    };
+
+    const answerSubmissionProps = {
+      turnId: currentTurn.id,
+      playerId: currentUser?.id || "",
+      scenario: currentScenario,
+      timeLimit: currentRoom?.time_limit || 30,
+      timerEnd: timerEnd,
+      ...commonProps,
+    };
+
+    const votingPhaseProps = {
+      turnId: currentTurn.id,
+      currentUserId: currentUser?.id || "",
+      ...commonProps,
+    };
+
+    switch (currentTurn.status) {
+      case "selecting_category":
+        return <CategorySelection {...categorySelectionProps} />;
+      case "selecting_scenario":
+        return <ScenarioSelection {...scenarioSelectionProps} />;
+      case "answering":
+        return <AnswerSubmission {...answerSubmissionProps} />;
+      case "voting":
+        return <VotingPhase {...votingPhaseProps} />;
+      default:
+        return (
+          <div className="text-center">
+            <GlowingText className="text-2xl font-bold mb-4">
+              {currentTurn.status === "completed"
+                ? "Turn Completed!"
+                : "Waiting..."}
+            </GlowingText>
+          </div>
+        );
+    }
   };
 
   const handleExit = async () => {
