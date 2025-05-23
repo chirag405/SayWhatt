@@ -190,7 +190,7 @@ export default function HomeScreen() {
       <Spotlight
         className="-top-40 left-0 md:left-60 md:-top-20 z-10"
         fill="blue"
-      />{" "}
+      />
       {/* Title */}
       <div className="w-full max-w-4xl text-center relative z-10 mb-8">
         <h1 className="text-5xl md:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-purple-500 to-blue-500 my-6 relative z-20">
@@ -254,7 +254,6 @@ export default function HomeScreen() {
                 Join Game
               </CardItem>
             </div>
-
             {/* Error Display */}
             <AnimatePresence>
               {error && (
@@ -270,7 +269,6 @@ export default function HomeScreen() {
                 </motion.div>
               )}
             </AnimatePresence>
-
             {/* Form Section */}
             <AnimatePresence mode="wait">
               {isFormVisible && (
@@ -300,7 +298,6 @@ export default function HomeScreen() {
                           />
                         </div>
                       </CardItem>
-
                       <CardItem translateZ={40} className="w-full">
                         <div>
                           <label className="block mb-2 text-slate-300 flex items-center">
@@ -333,7 +330,6 @@ export default function HomeScreen() {
                           </motion.div>
                         </div>
                       </CardItem>
-
                       <CardItem translateZ={50} className="w-full">
                         <div>
                           <label className="block mb-2 text-slate-300 flex items-center">
@@ -363,28 +359,39 @@ export default function HomeScreen() {
                           </motion.div>
                         </div>
                       </CardItem>
-
                       <CardItem translateZ={60} className="w-full">
-                        <div className="w-full bg-blue-900/80 text-white border border-blue-700/50 hover:border-blue-600 rounded-[0.75rem] relative overflow-hidden">
-                          <div className="absolute inset-0 bg-[radial-gradient(var(--blue-500)_40%,transparent_60%)]"></div>
+                        <div
+                          className={`w-full ${isLoading ? "bg-blue-800/70" : "bg-blue-900/80"} text-white border ${isLoading ? "border-blue-600/80" : "border-blue-700/50 hover:border-blue-600"} rounded-[0.75rem] relative overflow-hidden transition-colors duration-300`}
+                        >
+                          <div
+                            className={`absolute inset-0 bg-[radial-gradient(var(--blue-500)_40%,transparent_60%)] ${isLoading ? "opacity-70" : "opacity-100"}`}
+                          ></div>
                           <motion.button
                             type="submit"
                             disabled={isLoading}
-                            className="h-full w-full z-10 relative flex items-center justify-center px-6 py-3 bg-gradient-to-r from-blue-600/70 to-purple-600/70 rounded-[0.6rem] transition-all"
-                            whileHover={{
-                              letterSpacing: "0.05em",
-                              scale: 1.02,
-                            }}
-                            whileTap={{ scale: 0.98 }}
+                            className={`h-full w-full z-10 relative flex items-center justify-center px-6 py-4 ${isLoading ? "bg-gradient-to-r from-blue-700/80 to-purple-700/80" : "bg-gradient-to-r from-blue-600/70 to-purple-600/70"} rounded-[0.6rem] transition-all`}
+                            whileHover={
+                              isLoading
+                                ? {}
+                                : {
+                                    letterSpacing: "0.05em",
+                                    scale: 1.02,
+                                  }
+                            }
+                            whileTap={isLoading ? {} : { scale: 0.98 }}
                           >
                             {isLoading ? (
-                              <div className="flex items-center justify-center">
-                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                                Creating Game...
+                              <div className="inline-flex items-center justify-center">
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3"></div>
+                                <span className="text-white/90 font-medium">
+                                  Creating Lobby...
+                                </span>
                               </div>
                             ) : (
-                              <div className="flex items-center">
-                                <span>Create Game Room</span>
+                              <div className="inline-flex items-center">
+                                <span className="font-semibold">
+                                  Create Game Room
+                                </span>
                                 <ArrowRight className="w-5 h-5 ml-2" />
                               </div>
                             )}
@@ -436,26 +443,36 @@ export default function HomeScreen() {
                       </CardItem>
 
                       <CardItem translateZ={60} className="w-full">
-                        <div className="w-full bg-emerald-900/80 text-white border border-emerald-700/50 hover:border-emerald-600 rounded-[0.75rem] relative overflow-hidden">
-                          <div className="absolute inset-0 bg-[radial-gradient(var(--emerald-500)_40%,transparent_60%)]"></div>
+                        <div
+                          className={`w-full ${isLoading ? "bg-emerald-800/70" : "bg-emerald-900/80"} text-white border ${isLoading ? "border-emerald-600/80" : "border-emerald-700/50 hover:border-emerald-600"} rounded-[0.75rem] relative overflow-hidden transition-colors duration-300`}
+                        >
+                          <div
+                            className={`absolute inset-0 bg-[radial-gradient(var(--emerald-500)_40%,transparent_60%)] ${isLoading ? "opacity-70" : "opacity-100"}`}
+                          ></div>
                           <motion.button
                             type="submit"
                             disabled={isLoading}
-                            className="h-full w-full z-10 relative flex items-center justify-center px-6 py-3 bg-gradient-to-r from-emerald-600/70 to-teal-600/70 rounded-[0.6rem] transition-all"
-                            whileHover={{
-                              letterSpacing: "0.05em",
-                              scale: 1.02,
-                            }}
-                            whileTap={{ scale: 0.98 }}
+                            className={`h-full w-full z-10 relative flex items-center justify-center px-6 py-4 ${isLoading ? "bg-gradient-to-r from-emerald-700/80 to-teal-700/80" : "bg-gradient-to-r from-emerald-600/70 to-teal-600/70"} rounded-[0.6rem] transition-all`}
+                            whileHover={
+                              isLoading
+                                ? {}
+                                : {
+                                    letterSpacing: "0.05em",
+                                    scale: 1.02,
+                                  }
+                            }
+                            whileTap={isLoading ? {} : { scale: 0.98 }}
                           >
                             {isLoading ? (
-                              <div className="flex items-center justify-center">
-                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                                Joining Game...
+                              <div className="inline-flex items-center justify-center">
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-3"></div>
+                                <span className="text-white/90 font-medium">
+                                  Joining Game...
+                                </span>
                               </div>
                             ) : (
-                              <div className="flex items-center">
-                                <span>Join Game</span>
+                              <div className="inline-flex items-center">
+                                <span className="font-semibold">Join Game</span>
                                 <ArrowRight className="w-5 h-5 ml-2" />
                               </div>
                             )}
@@ -463,12 +480,12 @@ export default function HomeScreen() {
                         </div>
                       </CardItem>
                     </form>
-                  )}
+                  )}{" "}
                 </motion.div>
               )}
             </AnimatePresence>
           </CardBody>
-        </CardContainer>{" "}
+        </CardContainer>
       </motion.div>
       {/* Rick Roll Button */}
       <motion.div

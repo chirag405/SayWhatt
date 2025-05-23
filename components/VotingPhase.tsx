@@ -15,6 +15,7 @@ import { Card } from "@/components/ui/card";
 import { GradientButton } from "@/components/ui//gradient-button";
 import Sparkles from "@/components/ui/Sparkles";
 import { GlowingText } from "@/components/ui/glowing-text";
+import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
 import { playSound, SOUND_PATHS } from "@/utils/soundUtils";
 
 interface VotingPhaseProps {
@@ -34,7 +35,7 @@ export function VotingPhase({
   const [hasVoted, setHasVoted] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState(10); // 10 seconds per slide
+  const [timeLeft, setTimeLeft] = useState(30); // 30 seconds per slide
   const [turnData, setTurnData] = useState<{
     remaining_deciders: number;
   } | null>(null);
@@ -43,7 +44,6 @@ export function VotingPhase({
 
   const turnAnswers = answers.filter((a) => a.turn_id === turnId);
   const supabase = createClient();
-
   // Timer for automatic slideshow
   useEffect(() => {
     if (!isHost) return;
@@ -63,7 +63,7 @@ export function VotingPhase({
 
           if (currentAnswerIndex < turnAnswers.length - 1) {
             handleNext();
-            return 10; // Reset to 10 seconds for next slide
+            return 30; // Reset to 30 seconds for next slide
           } else {
             // Last slide finished, proceed to next turn
             setTimeout(() => {
@@ -93,7 +93,7 @@ export function VotingPhase({
       .on("broadcast", { event: "slide-change" }, (payload) => {
         console.log(`Received slide change event:`, payload);
         setCurrentAnswerIndex(payload.payload.slideIndex);
-        setTimeLeft(10); // Reset timer when slide changes
+        setTimeLeft(30); // Reset timer to 30 seconds when slide changes
       })
       .subscribe((status) => {
         console.log(`Channel ${channelName} subscription status:`, status);
@@ -187,12 +187,11 @@ export function VotingPhase({
       setIsLoading(false);
     }
   };
-
   const handleNext = () => {
     if (currentAnswerIndex < turnAnswers.length - 1) {
       const newIndex = currentAnswerIndex + 1;
       setCurrentAnswerIndex(newIndex);
-      setTimeLeft(10); // Reset timer
+      setTimeLeft(30); // Reset timer to 30 seconds
 
       // Broadcast slide change to all clients
       if (isHost) {
@@ -213,28 +212,7 @@ export function VotingPhase({
     }
   };
 
-  const handlePrevious = () => {
-    if (currentAnswerIndex > 0) {
-      const newIndex = currentAnswerIndex - 1;
-      setCurrentAnswerIndex(newIndex);
-      setTimeLeft(10); // Reset timer
-
-      // Broadcast slide change to all clients
-      if (isHost) {
-        supabase
-          .channel(`voting-slides:${turnId}`)
-          .send({
-            type: "broadcast",
-            event: "slide-change",
-            payload: { slideIndex: newIndex },
-          })
-          .then(() => console.log("Broadcast sent successfully"))
-          .catch((err) =>
-            console.error("Error broadcasting slide change:", err)
-          );
-      }
-    }
-  };
+  // Remove the handlePrevious function as we don't need it anymore
 
   const handleFinishVoting = async () => {
     if (!isHost) return;
@@ -286,7 +264,6 @@ export function VotingPhase({
 
   // Determine if this is the last turn in the round
   const isLastTurn = currentRoom?.current_turn === roomPlayers.length;
-
   // Text for the continue button
   const continueButtonText = isLoading
     ? "Processing..."
@@ -329,23 +306,24 @@ export function VotingPhase({
                   <span>{timeLeft}s</span>
                 </div>
               </div>
-
               <div className="bg-slate-800/50 p-5 rounded-md border border-purple-500/20 mb-4">
                 <p className="text-xl mb-4 text-white">
                   {currentAnswer.answer_text}
                 </p>
-              </div>
-
-              {/* AI Response display */}
+              </div>{" "}
+              {/* AI Response display with TypeWriter Effect */}
               {currentAnswer.ai_response && (
                 <div className="bg-purple-900/20 p-4 rounded-md mb-4 border border-purple-500/20">
                   <p className="text-sm text-purple-300 italic mb-1">
                     AI Feedback:
                   </p>
-                  <p className="text-gray-200">{currentAnswer.ai_response}</p>
+                  <TextGenerateEffect
+                    words={currentAnswer.ai_response}
+                    duration={0.8} // Slightly slower animation for better readability
+                    className="text-gray-200"
+                  />
                 </div>
               )}
-
               {/* Vote count display */}
               <div className="mb-4 text-center">
                 <span className="text-purple-300 px-4 py-1 bg-slate-800/50 rounded-full border border-purple-500/20 text-sm font-medium">
@@ -353,7 +331,6 @@ export function VotingPhase({
                   {votesForCurrentAnswer === 1 ? "vote" : "votes"}
                 </span>
               </div>
-
               <div className="flex justify-center space-x-4 mt-6">
                 <button
                   onClick={() => handleVote(currentAnswer.id, "up")}
@@ -387,41 +364,29 @@ export function VotingPhase({
               </div>
             </Card>
           </motion.div>
-        </AnimatePresence>
-
+        </AnimatePresence>{" "}
         {/* Navigation controls */}
-        <div className="flex justify-between items-center mt-4 gap-2">
-          <button
-            onClick={handlePrevious}
-            disabled={!isHost || currentAnswerIndex === 0}
-            className={`flex items-center px-4 py-2 rounded-lg transition-colors duration-200 ${
-              isHost && currentAnswerIndex > 0
-                ? "bg-slate-700/50 border border-purple-500/20 hover:bg-slate-600/50 text-white"
-                : "bg-slate-800/30 border border-purple-500/10 opacity-50 cursor-not-allowed text-slate-400"
-            }`}
-          >
-            <ChevronLeft className="w-5 h-5 mr-1" /> Previous
-          </button>
-
+        <div className="flex justify-center items-center mt-4 gap-2">
           <div className="flex items-center">
             <span className="px-3 py-1 bg-slate-700/50 rounded-lg border border-purple-500/20 text-purple-300 font-medium">
               {currentAnswerIndex + 1} / {turnAnswers.length}
             </span>
           </div>
 
-          <button
-            onClick={handleNext}
-            disabled={!isHost || currentAnswerIndex === turnAnswers.length - 1}
-            className={`flex items-center px-4 py-2 rounded-lg transition-colors duration-200 ${
-              isHost && currentAnswerIndex < turnAnswers.length - 1
-                ? "bg-slate-700/50 border border-purple-500/20 hover:bg-slate-600/50 text-white"
-                : "bg-slate-800/30 border border-purple-500/10 opacity-50 cursor-not-allowed text-slate-400"
-            }`}
-          >
-            Next <ChevronRight className="w-5 h-5 ml-1" />
-          </button>
+          {isHost && (
+            <button
+              onClick={handleNext}
+              disabled={currentAnswerIndex === turnAnswers.length - 1}
+              className={`flex items-center px-4 py-2 rounded-lg transition-colors duration-200 ml-4 ${
+                currentAnswerIndex < turnAnswers.length - 1
+                  ? "bg-slate-700/50 border border-purple-500/20 hover:bg-slate-600/50 text-white"
+                  : "bg-slate-800/30 border border-purple-500/10 opacity-50 cursor-not-allowed text-slate-400"
+              }`}
+            >
+              Next <ChevronRight className="w-5 h-5 ml-1" />
+            </button>
+          )}
         </div>
-
         {/* Continue button for host */}
         {isHost && (
           <div className="mt-8 text-center">

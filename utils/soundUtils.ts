@@ -14,7 +14,13 @@ export const SOUND_PATHS = {
 };
 
 // Sound category types for settings
-export type SoundCategory = "lobby" | "category" | "voting" | "results";
+export type SoundCategory =
+  | "lobby"
+  | "category"
+  | "voting"
+  | "results"
+  | "copy"
+  | "start";
 
 // Sound instances
 const soundInstances: Record<string, Howl> = {};
@@ -33,6 +39,8 @@ export interface SoundSettings {
     category: boolean;
     voting: boolean;
     results: boolean;
+    copy?: boolean;
+    start?: boolean;
   };
 }
 
@@ -44,6 +52,8 @@ export const defaultSoundSettings: SoundSettings = {
     category: true,
     voting: true,
     results: true,
+    copy: true,
+    start: true,
   },
 };
 
@@ -196,12 +206,17 @@ export function playSound(
   if (typeof window === "undefined") return;
 
   const settings = getSoundSettings();
+
+  // For backward compatibility with existing storage, treat 'copy' and 'start' as 'category'
+  const effectiveCategory =
+    category === "copy" || category === "start" ? "category" : category;
+
   console.log(
-    `Attempting to play sound in category ${category}, enabled: ${settings.categories[category]}`
+    `Attempting to play sound in category ${category}, enabled: ${settings.categories[effectiveCategory]}`
   );
 
   // Check if the sound category is enabled
-  if (!settings.categories[category]) {
+  if (!settings.categories[effectiveCategory]) {
     console.log(`Sound category ${category} is disabled. Not playing sound.`);
     return;
   }
@@ -280,7 +295,13 @@ export function playSound(
 }
 
 // Stop a specific sound
-export function stopSound(path: string): void {
+export function stopSound(path: string, keepLobbyMusic: boolean = true): void {
+  // Don't stop lobby music if keepLobbyMusic is true
+  if (path === SOUND_PATHS.lobby && keepLobbyMusic) {
+    console.log("Keeping lobby music playing (stopSound called but ignored)");
+    return;
+  }
+
   const key = Object.entries(SOUND_PATHS).find(([_, p]) => p === path)?.[0];
   if (key && soundInstances[key]) {
     soundInstances[key].stop();
@@ -298,20 +319,50 @@ export function stopSound(path: string): void {
   }
 }
 
-// Stop all playing sounds
-export function stopAllSounds(): void {
-  Object.values(soundInstances).forEach((sound) => {
+// Stop all playing sounds except lobby music if keepLobbyMusic is true
+export function stopAllSounds(keepLobbyMusic: boolean = true): void {
+  Object.entries(soundInstances).forEach(([key, sound]) => {
+    // Skip lobby music if keepLobbyMusic is true
+    const isLobbyMusic =
+      SOUND_PATHS[key as keyof typeof SOUND_PATHS] === SOUND_PATHS.lobby;
+
+    if (isLobbyMusic && keepLobbyMusic) {
+      // Don't stop lobby music
+      console.log("Keeping lobby music playing");
+      return;
+    }
+
     if (sound.playing()) {
       sound.stop();
     }
   });
 
-  // Reset lobby music initialized flag
-  lobbyMusicInitialized = false;
-  console.log("Reset lobby music initialized flag (all sounds stopped)");
+  // Only reset lobby music initialized flag if we're stopping it too
+  if (!keepLobbyMusic) {
+    lobbyMusicInitialized = false;
+    console.log("Reset lobby music initialized flag (all sounds stopped)");
+  }
 
-  // Clear looping sounds tracking
-  loopingSounds.clear();
+  // Keep looping sounds for lobby if keeping lobby music
+  if (keepLobbyMusic) {
+    const lobbyKey = Object.keys(SOUND_PATHS).find(
+      (key) =>
+        SOUND_PATHS[key as keyof typeof SOUND_PATHS] === SOUND_PATHS.lobby
+    );
+
+    // Clear all looping sounds except lobby
+    const newLoopingSounds = new Set<string>();
+    if (lobbyKey && loopingSounds.has(lobbyKey)) {
+      newLoopingSounds.add(lobbyKey);
+    }
+    loopingSounds.clear();
+
+    // Add back the lobby if it was looping
+    newLoopingSounds.forEach((key) => loopingSounds.add(key));
+  } else {
+    // Clear all looping sounds
+    loopingSounds.clear();
+  }
 }
 
 // Update all sound volumes based on master volume

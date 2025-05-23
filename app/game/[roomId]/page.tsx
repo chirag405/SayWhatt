@@ -120,17 +120,17 @@ export default function GameScreen() {
     : 0;
 
   useTabCloseHandler(currentUser?.id || null, currentRoom?.id || null);
-
-  // Preload sounds when component mounts and stop any background music
+  // Preload sounds when component mounts but keep lobby music playing
   useEffect(() => {
-    // Stop all sounds when entering game screen, regardless of toggle state
-    stopAllSounds();
-
-    // Then preload sounds for later use (but don't play anything yet)
+    // Preload game-related sounds for later use
     preloadSounds();
 
+    // Instead of stopping all sounds, we'll keep lobby music playing
+    // This allows continuous background music throughout the game
+
     return () => {
-      stopAllSounds();
+      // Only stop game-specific sounds, not lobby music when leaving
+      // We'll manage lobby music via settings only
     };
   }, []);
 

@@ -96,13 +96,17 @@ export function AnswerSubmission({
       const { submittedCount, expectedCount } = submissionCount();
       const allPlayersSubmitted = submittedCount >= expectedCount;
       const isTimerExpired = timerEnd ? new Date() > timerEnd : false;
-
       if ((allPlayersSubmitted || isTimerExpired) && !isProcessingNextPhase) {
         setIsProcessingNextPhase(true);
         setShowAIProcessing(true);
         console.log(
           "All players submitted or timer expired, progressing game..."
         );
+
+        // Clear the timer when all players have submitted their answers
+        if (allPlayersSubmitted && !isTimerExpired) {
+          clearTimer();
+        }
 
         try {
           // Process AI responses for current answers

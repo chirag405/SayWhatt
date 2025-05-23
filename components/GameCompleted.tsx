@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
   Trophy,
@@ -22,6 +22,39 @@ import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient";
 import { playSound, stopAllSounds, SOUND_PATHS } from "@/utils/soundUtils";
 
+// Fun avatar emojis for the game completion screen
+const AVATAR_EMOJIS = [
+  "🏆",
+  "🥇",
+  "🥈",
+  "🥉",
+  "😎",
+  "🤠",
+  "👑",
+  "🧠",
+  "👻",
+  "🦊",
+  "🦁",
+  "🐯",
+  "🐼",
+  "🐨",
+  "🐵",
+  "🐸",
+  "🦄",
+  "🦉",
+  "🦇",
+  "🐢",
+  "🐙",
+  "🦋",
+  "🐝",
+  "🦖",
+  "🦈",
+  "👽",
+  "🤖",
+  "🦸",
+  "🧙",
+  "👩‍🚀",
+];
 interface GameCompletedProps {
   players: Player[];
 }
@@ -137,6 +170,33 @@ export function GameCompleted({ players }: GameCompletedProps) {
       },
     },
   };
+
+  // Generate player avatars - memoized to ensure consistency
+  const playerAvatars = useMemo(() => {
+    const avatarMap = new Map();
+
+    // Create a deterministic but random-looking assignment based on player IDs
+    safePlayersList.forEach((player, index) => {
+      // Use a simple hash of the player ID to get a consistent avatar
+      let hashSum = 0;
+      for (let i = 0; i < player.id.length; i++) {
+        hashSum += player.id.charCodeAt(i);
+      }
+
+      // Select emoji
+      const emojiIndex = hashSum % AVATAR_EMOJIS.length;
+
+      // Top 3 winners get special emojis
+      let emoji = AVATAR_EMOJIS[emojiIndex];
+      if (index === 0) emoji = "🏆";
+      else if (index === 1) emoji = "🥇";
+      else if (index === 2) emoji = "🥈";
+
+      avatarMap.set(player.id, { emoji });
+    });
+
+    return avatarMap;
+  }, [safePlayersList.map((p) => p.id).join(",")]);
 
   // Loading animation component
   const LoadingAnimation = () => (
@@ -293,7 +353,10 @@ export function GameCompleted({ players }: GameCompletedProps) {
                                           : "bg-gradient-to-br from-slate-700 to-slate-800"
                                   }`}
                                 >
-                                  {player.nickname[0].toUpperCase()}
+                                  <span className="text-xl">
+                                    {playerAvatars.get(player.id)?.emoji ||
+                                      player.nickname[0].toUpperCase()}
+                                  </span>
                                 </div>
                               </div>
 

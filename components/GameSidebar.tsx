@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   User,
   Trophy,
@@ -24,6 +24,54 @@ interface GameSidebarProps {
   totalRounds: number;
 }
 
+// Fun avatar emojis for players with distinct personalities
+const AVATAR_EMOJIS = [
+  "😎",
+  "🤠",
+  "🧠",
+  "👻",
+  "🦊",
+  "🦁",
+  "🐯",
+  "🐼",
+  "🐨",
+  "🐵",
+  "🐸",
+  "🦄",
+  "🦉",
+  "🦇",
+  "🐢",
+  "🐙",
+  "🦋",
+  "🐝",
+  "🦖",
+  "🦈",
+  "👽",
+  "🤖",
+  "🦸",
+  "🧙",
+  "👩‍🚀",
+  "👨‍🚀",
+  "👩‍🔬",
+  "👨‍🔬",
+  "🕵️",
+  "🥷",
+  "🧛",
+  "🧚",
+];
+
+// Color palettes for different avatar backgrounds
+const AVATAR_COLORS = [
+  { from: "from-blue-500", to: "to-cyan-400" },
+  { from: "from-purple-500", to: "to-pink-400" },
+  { from: "from-green-500", to: "to-emerald-400" },
+  { from: "from-red-500", to: "to-rose-400" },
+  { from: "from-orange-500", to: "to-amber-400" },
+  { from: "from-fuchsia-500", to: "to-purple-400" },
+  { from: "from-indigo-500", to: "to-blue-400" },
+  { from: "from-teal-500", to: "to-green-400" },
+];
+
 export function GameSidebar({
   players,
   currentUserId,
@@ -33,6 +81,31 @@ export function GameSidebar({
 }: GameSidebarProps) {
   const [expanded, setExpanded] = useState(true);
   const { votes, answers } = useGameStore();
+
+  // Generate player avatars - memoized to ensure consistency
+  const playerAvatars = useMemo(() => {
+    const avatarMap = new Map();
+
+    // Create a deterministic but random-looking assignment based on player IDs
+    players.forEach((player, index) => {
+      // Use a simple hash of the player ID to get a consistent avatar
+      let hashSum = 0;
+      for (let i = 0; i < player.id.length; i++) {
+        hashSum += player.id.charCodeAt(i);
+      }
+
+      // Select emoji and color based on hash
+      const emojiIndex = hashSum % AVATAR_EMOJIS.length;
+      const colorIndex = Math.floor(hashSum / 7) % AVATAR_COLORS.length;
+
+      avatarMap.set(player.id, {
+        emoji: AVATAR_EMOJIS[emojiIndex],
+        color: AVATAR_COLORS[colorIndex],
+      });
+    });
+
+    return avatarMap;
+  }, [players.map((p) => p.id).join(",")]);
 
   // Sort players by points (highest first)
   const sortedPlayers = [...players].sort((a, b) => {
@@ -156,6 +229,7 @@ export function GameSidebar({
               }}
             >
               <div className="relative">
+                {" "}
                 <div
                   className={`w-10 h-10 flex items-center justify-center rounded-full shadow-lg
                   ${
@@ -166,9 +240,11 @@ export function GameSidebar({
                         : "bg-gradient-to-br from-slate-600 to-slate-700"
                   }`}
                 >
-                  {player.nickname[0].toUpperCase()}
+                  <span className="text-2xl">
+                    {playerAvatars.get(player.id)?.emoji ||
+                      player.nickname[0].toUpperCase()}
+                  </span>
                 </div>
-
                 {/* First place crown for top player */}
                 {index === 0 && (
                   <span className="absolute -top-2 -right-2">

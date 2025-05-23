@@ -261,11 +261,9 @@ export async function joinRoom({
 
     if (existingPlayer) {
       throw new Error("Nickname already taken in this room");
-    }
-
-    // Check if the room is full or game already started
+    } // Check if the room is full or game already started
     if (room.game_status !== "waiting") {
-      throw new Error("Game has already started or is completed");
+      throw new Error("Game has already started");
     }
 
     // Create the player

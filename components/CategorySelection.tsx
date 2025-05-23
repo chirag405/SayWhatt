@@ -34,12 +34,35 @@ export function CategorySelection({
 
   // Current turn status
   const currentStatus = currentTurn?.status;
-
   const categories = [
-    { id: "relationship", name: "Relationship Drama", color: "rose" },
-    { id: "chaos", name: "Hilarious Chaos", color: "yellow" },
-    { id: "lifedeath", name: "Life-or-Death Dilemmas", color: "red" },
-    { id: "embarrassing", name: "Embarrassing Moments", color: "orange" },
+    {
+      id: "relationship",
+      name: "Relationship Drama",
+      color: "rose",
+      emoji: "💔",
+      description: "Romantic mishaps & family chaos",
+    },
+    {
+      id: "chaos",
+      name: "Hilarious Chaos",
+      color: "yellow",
+      emoji: "🤪",
+      description: "Wild situations & unpredictable events",
+    },
+    {
+      id: "lifedeath",
+      name: "Life-or-Death Dilemmas",
+      color: "red",
+      emoji: "💀",
+      description: "Extreme choices in dire situations",
+    },
+    {
+      id: "embarrassing",
+      name: "Embarrassing Moments",
+      color: "orange",
+      emoji: "😳",
+      description: "Awkward situations & social disasters",
+    },
   ];
 
   const handleSelectCategory = async (category: string) => {
@@ -134,9 +157,14 @@ export function CategorySelection({
       <div className="flex flex-col items-center justify-center h-full">
         <div className="text-center">
           <Sparkles>
+            {" "}
             <GlowingText className="text-2xl font-bold mb-4">
               Category selected:{" "}
-              <span className="text-purple-200">{currentCategory}</span>
+              <span className="text-purple-200">
+                {categories.find((c) => c.name === currentCategory)?.emoji ||
+                  ""}{" "}
+                {currentCategory}
+              </span>
             </GlowingText>
           </Sparkles>
 
@@ -228,25 +256,31 @@ export function CategorySelection({
               "from-blue-600 to-blue-400";
             return (
               <div key={category.id}>
+                {" "}
                 <Card
                   className={`p-6 cursor-pointer hover:scale-102 transition-all bg-slate-900/80 ${
                     selectedCategory === category.name
-                      ? "border-2 border-white"
-                      : "border border-purple-300/20"
+                      ? "border-2 border-white shadow-lg shadow-white/20"
+                      : "border border-purple-300/20 hover:border-purple-300/40 hover:shadow-lg hover:shadow-purple-500/10"
                   }`}
                   onClick={() => handleSelectCategory(category.name)}
                 >
+                  {" "}
                   <div className="text-center">
+                    {" "}
                     <div
-                      className={`w-12 h-12 mx-auto mb-3 rounded-full bg-gradient-to-br ${bgGradient} flex items-center justify-center`}
+                      className={`w-14 h-14 mx-auto mb-3 rounded-full bg-gradient-to-br ${bgGradient} flex items-center justify-center shadow-lg shadow-${category.color}-500/30 ring-2 ring-${category.color}-400/30`}
                     >
-                      <span className="text-white font-bold text-xl">
-                        {category.name[0]}
+                      <span className="text-white text-3xl">
+                        {category.emoji}
                       </span>
-                    </div>
+                    </div>{" "}
                     <h3 className="text-xl font-bold text-white bg-black/20 p-2 rounded-lg">
                       {category.name}
                     </h3>
+                    <p className="text-xs mt-2 text-gray-300">
+                      {category.description}
+                    </p>
                   </div>
                 </Card>
               </div>

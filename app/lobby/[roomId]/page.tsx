@@ -15,6 +15,7 @@ import { TextGenerateEffect } from "@/components/ui/text-generate-effect"; // NE
 import { Button as AceternityButton } from "@/components/ui/moving-border"; // NEW
 import { HoverBorderGradient } from "@/components/ui/hover-border-gradient"; // NEW (Optional for extra flair)
 import { CosmicParticlesBackground } from "@/components/ui/cosmic-particles-background";
+import { useToast } from "@/components/ui/toast"; // NEW for toast notifications
 // Lucide Icons
 import {
   Users,
@@ -26,6 +27,8 @@ import {
   PlayCircle,
   Info, // For How to Play
   AlertTriangle, // For errors
+  Copy, // NEW for copy icon
+  CheckCircle, // NEW for copy success
 } from "lucide-react";
 
 // Sound Utilities
@@ -60,6 +63,7 @@ export default function LobbyScreen() {
   const router = useRouter();
   const params = useParams();
   const supabase = createClient();
+  const { showToast, ToastContainer } = useToast(); // NEW Toast hook
   const {
     currentRoom,
     currentUser,
@@ -127,13 +131,29 @@ export default function LobbyScreen() {
             return;
           }
           if (room.game_status === "in_progress") {
-            router.push(`/game/${room.id}`);
+            showToast({
+              message: "This game has already started!",
+              type: "error",
+              duration: 5000,
+              position: "top-center",
+            });
+            setTimeout(() => {
+              router.push("/");
+            }, 2000);
             return;
           }
         }
         if (!mounted) return;
         if (currentRoom?.game_status === "in_progress") {
-          router.push(`/game/${currentRoom.id}`);
+          showToast({
+            message: "This game has already started!",
+            type: "error",
+            duration: 5000,
+            position: "top-center",
+          });
+          setTimeout(() => {
+            router.push("/");
+          }, 2000);
           return;
         }
         if (!currentUser) {
@@ -273,16 +293,28 @@ export default function LobbyScreen() {
       setIsLeaving(false);
     }
   };
-
   const copyRoomCode = () => {
     if (!currentRoom) return;
+    playSound(SOUND_PATHS.categorySelect, "copy", false);
     navigator.clipboard
       .writeText(currentRoom.room_code)
       .then(() => {
+        showToast({
+          message: "Game code copied to clipboard! Share with friends!",
+          type: "success",
+          duration: 2500,
+          position: "bottom-center",
+        });
         setCopySuccess("Code Copied!");
         setTimeout(() => setCopySuccess(""), 2000);
       })
       .catch((err) => {
+        showToast({
+          message: "Failed to copy room code",
+          type: "error",
+          duration: 3000,
+          position: "bottom-center",
+        });
         setCopySuccess("Copy Failed!");
         console.error("Failed to copy:", err);
       });
@@ -347,6 +379,9 @@ export default function LobbyScreen() {
   console.log("are u the host ", isHost);
   return (
     <div className="min-h-screen bg-black p-4 md:p-6 lg:p-8 overflow-hidden relative">
+      {/* Toast Container for notifications */}
+      <ToastContainer />
+
       {/* Background Effects */}
       <CosmicParticlesBackground
         particleColors={[
@@ -394,9 +429,10 @@ export default function LobbyScreen() {
               <div className="absolute inset-0 rounded-3xl border-2 border-transparent group-hover/card:border-purple-500/70 transition-all duration-500 pointer-events-none animate-pulse-border" />
 
               <div className="flex flex-col items-center space-y-6">
+                {" "}
                 <CardItem translateZ={80} className="w-full text-center">
                   <TextGenerateEffect
-                    words="Lobby Matrix"
+                    words="Lobby"
                     className="text-4xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-br from-cyan-400 via-purple-500 to-pink-500 pb-2"
                   />
                   <p className="text-md text-slate-400 mt-2">
@@ -408,37 +444,43 @@ export default function LobbyScreen() {
                   </p>
                 </CardItem>{" "}
                 <CardItem translateZ={60} className="w-full max-w-lg">
+                  {" "}
                   <div
-                    className="bg-slate-800/70 p-6 rounded-xl cursor-pointer relative overflow-hidden border border-slate-700/50 hover:border-cyan-500/50 shadow-lg transition-all duration-300 hover:shadow-cyan-400/20"
+                    className="bg-gradient-to-br from-slate-800/90 to-slate-900/90 p-6 rounded-xl cursor-pointer relative overflow-hidden border-2 border-slate-700/70 hover:border-cyan-500/70 hover:shadow-lg hover:shadow-cyan-500/20 transition-all duration-300 group"
                     onClick={() => {
                       copyRoomCode();
-                      playClickSound();
                     }}
                   >
-                    <div className="flex items-center justify-center space-x-4">
-                      <Share2 className="h-7 w-7 text-blue-400 hover:text-cyan-300 transition-colors" />
-                      <div className="text-5xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-cyan-300 to-purple-300 tracking-widest font-mono">
-                        {currentRoom.room_code}
+                    {/* Glow effect */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-cyan-500/10 to-purple-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col space-y-2">
+                        <span className="text-xs font-medium text-slate-400">
+                          GAME CODE
+                        </span>
+                        <div className="text-5xl md:text-6xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-300 via-cyan-300 to-purple-300 tracking-widest font-mono">
+                          {currentRoom.room_code}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-center h-12 w-12 rounded-full bg-cyan-900/50 border border-cyan-700/50 group-hover:bg-cyan-800/70 group-hover:border-cyan-600/70 transition-all duration-300">
+                        {copySuccess ? (
+                          <CheckCircle className="h-5 w-5 text-green-400 animate-pulse" />
+                        ) : (
+                          <Copy className="h-5 w-5 text-cyan-400 group-hover:scale-110 transition-transform duration-300" />
+                        )}
                       </div>
                     </div>
-                    <p className="text-sm text-center text-slate-400 mt-4 hover:text-cyan-300 transition-colors">
-                      {copySuccess
-                        ? copySuccess
-                        : "Tap Code to Copy & Share Mission Intel"}
-                    </p>
-                    <AnimatePresence>
-                      {copySuccess === "Code Copied!" && (
-                        <motion.div
-                          key={copySuccess}
-                          initial={{ opacity: 0, scale: 0.8, y: 10 }}
-                          animate={{ opacity: 1, scale: 1, y: 0 }}
-                          exit={{ opacity: 0, scale: 0.8, y: 10 }}
-                          className="absolute inset-x-0 -bottom-8 mx-auto w-max px-4 py-2 bg-green-500/80 backdrop-blur-sm text-white text-sm rounded-md shadow-lg"
-                        >
-                          Transmission Copied!
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    <div className="mt-4 text-center">
+                      <span className="text-sm text-slate-400 group-hover:text-cyan-300 transition-colors duration-300">
+                        {copySuccess
+                          ? copySuccess
+                          : "Click to copy & share with friends"}
+                      </span>
+                    </div>
+
+                    {/* Pulse effect when hovering */}
+                    <div className="absolute inset-0 bg-cyan-500/5 scale-0 group-hover:scale-100 rounded-xl transition-transform duration-300 origin-center" />
                   </div>
                 </CardItem>
                 <div className="flex flex-wrap justify-center gap-5 w-full">
@@ -491,24 +533,33 @@ export default function LobbyScreen() {
                       ></div>
                       <motion.button
                         className={`color-w h-full w-full z-10 relative flex items-center justify-center px-8 py-5 ${
-                          roomPlayers.length >= minimumPlayers
+                          roomPlayers.length >= minimumPlayers && !isStarting
                             ? "bg-emerald-600/50 hover:bg-emerald-500/70"
-                            : "bg-gray-600/50 cursor-not-allowed"
+                            : isStarting
+                              ? "bg-emerald-700/70"
+                              : "bg-gray-600/50 cursor-not-allowed"
                         } rounded-lg transition-all`}
                         whileHover={
-                          roomPlayers.length >= minimumPlayers
+                          roomPlayers.length >= minimumPlayers && !isStarting
                             ? { letterSpacing: "0.05em", scale: 1.02 }
                             : {}
                         }
                         whileTap={
-                          roomPlayers.length >= minimumPlayers
+                          roomPlayers.length >= minimumPlayers && !isStarting
                             ? { scale: 0.98 }
                             : {}
                         }
                         onClick={() => {
-                          if (roomPlayers.length >= minimumPlayers) {
+                          if (
+                            roomPlayers.length >= minimumPlayers &&
+                            !isStarting
+                          ) {
                             handleStartGame();
-                            playClickSound();
+                            playSound(
+                              SOUND_PATHS.categorySelect,
+                              "start",
+                              false
+                            );
                           }
                         }}
                         disabled={
@@ -520,7 +571,11 @@ export default function LobbyScreen() {
                             : ""
                         }
                       >
-                        <PlayCircle className="h-8 w-8 mr-3" />
+                        {isStarting ? (
+                          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin mr-3"></div>
+                        ) : (
+                          <PlayCircle className="h-8 w-8 mr-3" />
+                        )}
                         <span className="text-xl font-semibold">
                           {isStarting
                             ? "Initializing Mission..."
