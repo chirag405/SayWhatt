@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 // Aceternity UI Components
 
 import { Spotlight } from "@/components/ui/spotlight";
+import GamifiedTitle from "@/components/ui/GamifiedTitle"; // Added import
 
 import { TextGenerateEffect } from "@/components/ui/text-generate-effect";
 import { CardContainer, CardBody, CardItem } from "@/components/ui/3d-card";
@@ -193,10 +194,8 @@ export default function HomeScreen() {
         fill="blue"
       />
       {/* Title */}
-      <div className="w-full max-w-4xl text-center relative z-10 mb-8">
-        <h1 className="text-5xl md:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-purple-500 to-blue-500 my-6 relative z-20">
-          SayWhat
-        </h1>
+      <div className="w-full max-w-4xl text-center relative z-10 mb-4 md:mb-8"> {/* Adjusted mb */}
+        <GamifiedTitle title="SayWhat" />
       </div>
       {/* Main Content */}
       <motion.div

@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Special+Elite&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -160,3 +161,229 @@
   border-right: .15em solid orange; /* Adjust size and color as needed */
   animation: blink-caret .75s step-end infinite;
 }
+
+/* === Gamified Title Styles START === */
+
+/* Import Orbitron if not already there (should be from previous step) */
+/* @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap'); */
+
+/* Keyframes */
+@keyframes gradientShift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+@keyframes floatTitle {
+  0%, 100% { transform: rotateX(15deg) rotateY(-5deg) translateY(0px); }
+  50% { transform: rotateX(15deg) rotateY(-5deg) translateY(-10px); }
+}
+
+@keyframes glowPulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.02); }
+}
+
+@keyframes particleFloat {
+  0% {
+    transform: translateY(100vh) translateX(0px) scale(0);
+    opacity: 0;
+  }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% {
+    transform: translateY(-100px) translateX(var(--particle-tx, 0px)) scale(var(--particle-scale, 1));
+    opacity: 0;
+  }
+}
+
+@keyframes cornerPulse {
+  0%, 100% { 
+    opacity: 0.6; 
+    transform: scale(1);
+    filter: drop-shadow(0 0 5px currentColor);
+  }
+  50% { 
+    opacity: 1; 
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 15px currentColor);
+  }
+}
+
+@keyframes scanMove {
+  0% { background-position: 0 0; } /* Adjusted for repeating-linear-gradient */
+  100% { background-position: 0 100vh; } /* Adjusted for repeating-linear-gradient */
+}
+
+@keyframes powerUp {
+  0% { 
+    transform: rotateX(15deg) rotateY(-5deg) scale(1);
+    filter: brightness(1);
+  }
+  50% { 
+    transform: rotateX(25deg) rotateY(-10deg) scale(1.15);
+    filter: brightness(1.5) saturate(2);
+  }
+  100% { 
+    transform: rotateX(15deg) rotateY(-5deg) scale(1);
+    filter: brightness(1);
+  }
+}
+
+/* Styles for GamifiedTitle component elements */
+.game-title-container {
+  perspective: 1000px;
+  position: relative;
+  z-index: 20; /* Ensure it's above other elements if necessary */
+}
+
+.game-title {
+  font-family: 'Orbitron', monospace; /* Ensure font is applied */
+  letter-spacing: 0.1em;
+  text-align: center;
+  position: relative;
+  cursor: pointer;
+  user-select: none;
+  
+  /* 3D Text Effect Base - Gradient will be applied by Tailwind */
+  /* background: linear-gradient(45deg, #00ffff, #ff00ff, #ffff00, #00ff00); */
+  /* background-size: 400% 400%; */ /* Will be a Tailwind utility: bg-[length:400%_400%] */
+  /* -webkit-background-clip: text; */
+  /* background-clip: text; */
+  /* -webkit-text-fill-color: transparent; */
+
+  /* 3D Shadow Layers */
+  text-shadow: 
+    1px 1px 0 #ff6b6b,
+    2px 2px 0 #4ecdc4,
+    3px 3px 0 #45b7d1,
+    4px 4px 0 #96ceb4,
+    5px 5px 0 #feca57,
+    6px 6px 0 #ff9ff3,
+    7px 7px 0 #54a0ff,
+    8px 8px 10px rgba(0,0,0,0.4),
+    12px 12px 20px rgba(0,0,0,0.3),
+    16px 16px 30px rgba(0,0,0,0.2);
+
+  transform: rotateX(15deg) rotateY(-5deg); /* Base transform */
+  transform-style: preserve-3d;
+  transition: all 0.3s ease;
+  /* Animations will be applied by Tailwind: animate-gradientShift animate-floatTitle */
+}
+
+.game-title:hover {
+  transform: rotateX(25deg) rotateY(-10deg) scale(1.05);
+  text-shadow: 
+    2px 2px 0 #ff6b6b,
+    4px 4px 0 #4ecdc4,
+    6px 6px 0 #45b7d1,
+    8px 8px 0 #96ceb4,
+    10px 10px 0 #feca57,
+    12px 12px 0 #ff9ff3,
+    14px 14px 0 #54a0ff,
+    16px 16px 20px rgba(0,0,0,0.5),
+    24px 24px 40px rgba(0,0,0,0.4),
+    32px 32px 60px rgba(0,0,0,0.3);
+}
+
+.game-title:active {
+  transform: rotateX(5deg) rotateY(-2deg) scale(0.98);
+  /* animation-play-state: paused; */ /* Control this via JS if needed, or let animations continue */
+}
+
+/* Activated class for click effect */
+.game-title.activated {
+  animation: powerUp 0.6s ease-out;
+}
+
+/* Glow effect - applied to a separate div or a pseudo-element if simple enough */
+/* This class can be added to a div sibling to h1.game-title */
+.game-title-glow {
+  content: ''; /* Not used if on a div */
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  right: -10px;
+  bottom: -10px;
+  background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4, #feca57, #ff9ff3);
+  border-radius: 20px; /* Tailwind: rounded-[20px] */
+  z-index: -1; /* Ensure it's behind the text */
+  opacity: 0.3;
+  filter: blur(15px); /* Tailwind: blur-[15px] */
+  animation: glowPulse 2s ease-in-out infinite;
+}
+
+/* Particle effects */
+.particle {
+  position: absolute;
+  background: radial-gradient(circle, #00ffff, transparent);
+  border-radius: 50%; /* Tailwind: rounded-full */
+  pointer-events: none;
+  animation: particleFloat 6s linear infinite;
+  /* Dynamic properties like size, left, animation-delay will be set via inline styles in React */
+}
+
+.particle.odd { /* For variety, can be applied conditionally in React */
+  background: radial-gradient(circle, #ff00ff, transparent);
+  animation-duration: 8s;
+}
+
+/* Game-style decorative elements */
+.game-decorations {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%); /* Centering */
+  width: 120%; /* Adjust as needed */
+  height: 120%; /* Adjust as needed */
+  pointer-events: none;
+  z-index: -1; /* Behind the title text but above container background */
+}
+
+.corner-accent {
+  position: absolute;
+  width: 60px; /* Tailwind: w-[60px] */
+  height: 60px; /* Tailwind: h-[60px] */
+  border: 3px solid; /* Tailwind: border-[3px] */
+  /* border-image: linear-gradient(45deg, #00ffff, #ff00ff) 1; */ /* Complex: Needs custom CSS or plugin */
+  /* For simplicity, let's use a single color border that pulses, can be enhanced later */
+  border-color: #00ffff; /* Default color, will be animated by cornerPulse's filter */
+  animation: cornerPulse 2s ease-in-out infinite;
+}
+
+.corner-accent:nth-child(1) { top: 0; left: 0; border-right: none; border-bottom: none; animation-delay: 0s; }
+.corner-accent:nth-child(2) { top: 0; right: 0; border-left: none; border-bottom: none; animation-delay: 0.5s; }
+.corner-accent:nth-child(3) { bottom: 0; left: 0; border-right: none; border-top: none; animation-delay: 1s; }
+.corner-accent:nth-child(4) { bottom: 0; right: 0; border-left: none; border-top: none; animation-delay: 1.5s; }
+
+/* Scan lines effect */
+.scan-lines {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0, 255, 255, 0.03) 2px,
+      rgba(0, 255, 255, 0.03) 4px
+  );
+  pointer-events: none;
+  animation: scanMove 10s linear infinite; /* Slower scanMove */
+}
+
+/* Responsive adjustments (example) */
+/* These can be converted to Tailwind's responsive prefixes (e.g., md:, lg:) in the JSX */
+/* @media (max-width: 768px) { */
+/*   .game-title { */
+/*     font-size: clamp(2.5rem, 12vw, 6rem); */ /* Tailwind: text-[clamp(2.5rem,12vw,6rem)] */
+/*     letter-spacing: 0.05em; */ /* Tailwind: tracking-normal or tracking-tight */
+/*   } */
+/*   .corner-accent { */
+/*     width: 40px; */ /* Tailwind: w-10 */
+/*     height: 40px; */ /* Tailwind: h-10 */
+/*   } */
+/* } */
+
+/* === Gamified Title Styles END === */
