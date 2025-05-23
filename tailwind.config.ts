@@ -21,6 +21,10 @@ const config = {
       },
     },
     extend: {
+      fontFamily: {
+        'special-elite': ['Special Elite', 'monospace'],
+        'orbitron': ['Orbitron', 'monospace'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -77,6 +81,14 @@ const config = {
             height: "var(--radix-accordion-content-height)",
           },
         },
+        "accordion-down": {
+          from: {
+            height: "0",
+          },
+          to: {
+            height: "var(--radix-accordion-content-height)",
+          },
+        },
         "accordion-up": {
           from: {
             height: "var(--radix-accordion-content-height)",
@@ -85,10 +97,25 @@ const config = {
             height: "0",
           },
         },
+        gradientShift: {
+          '0%, 100%': { backgroundPosition: '0% 50%' },
+          '50%': { backgroundPosition: '100% 50%' },
+        },
+        floatTitle: {
+          '0%, 100%': { transform: 'rotateX(15deg) rotateY(-5deg) translateY(0px)' },
+          '50%': { transform: 'rotateX(15deg) rotateY(-5deg) translateY(-10px)' },
+        },
+        glowPulse: {
+          '0%, 100%': { opacity: '0.3', transform: 'scale(1)' },
+          '50%': { opacity: '0.6', transform: 'scale(1.02)' },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+        gradientShift: 'gradientShift 3s ease-in-out infinite',
+        floatTitle: 'floatTitle 4s ease-in-out infinite',
+        glowPulse: 'glowPulse 2s ease-in-out infinite',
       },
     },
   },
