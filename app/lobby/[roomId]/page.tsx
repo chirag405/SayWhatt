@@ -239,7 +239,7 @@ export default function LobbyScreen() {
     setIsStarting(true);
     setError("");
     try {
-      stopAllSounds();
+      stopAllSounds(false); // Pass false to stop lobby music as well
       playSound(SOUND_PATHS.transition, "results");
       const success = await startGame(currentRoom.id, currentUser.id);
       if (!success) throw new Error("Game failed to initialize.");

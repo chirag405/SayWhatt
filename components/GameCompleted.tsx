@@ -97,15 +97,21 @@ export function GameCompleted({ players }: GameCompletedProps) {
 
   // Get the winner - in single player case, it's the only player
   const winner = sortedPlayers[0];
-
   useEffect(() => {
-    // Play sound on initial load
-    playSound(SOUND_PATHS.resultsReveal, "results");
+    // Make sure lobby music is stopped before playing results sound
+    stopAllSounds(false);
+
+    // Play results sound after a brief delay
+    setTimeout(() => {
+      playSound(SOUND_PATHS.resultsReveal, "results");
+    }, 200);
 
     // Short loading delay to allow animations to complete
     const loadingTimeout = setTimeout(() => {
       setIsLoading(false);
-    }, 1000); // Auto-reset timer (1 minute)
+    }, 1000);
+
+    // Auto-reset timer (1 minute)
     const resetTimer = setTimeout(() => {
       handleResetAndReturn();
     }, 60000); // 60 seconds = 1 minute
@@ -114,7 +120,7 @@ export function GameCompleted({ players }: GameCompletedProps) {
       clearTimeout(loadingTimeout);
       clearTimeout(resetTimer);
       // Stop any sounds that might be playing when component unmounts
-      stopAllSounds();
+      stopAllSounds(false);
     };
   }, []);
 

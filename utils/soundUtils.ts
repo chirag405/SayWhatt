@@ -334,6 +334,13 @@ export function stopAllSounds(keepLobbyMusic: boolean = true): void {
 
     if (sound.playing()) {
       sound.stop();
+      console.log(`Stopped sound: ${key}`);
+
+      // If this is lobby music that we're stopping, reset the initialization flag
+      if (isLobbyMusic) {
+        lobbyMusicInitialized = false;
+        console.log("Lobby music stopped completely");
+      }
     }
   });
 
@@ -407,6 +414,7 @@ export function checkAndStartLobbyMusic(): void {
 
   // Lobby sounds are enabled in settings, proceed to play or create.
 
+  // If we already have an instance of lobby music
   if (soundInstances[lobbyKey]) {
     // Instance exists
     soundInstances[lobbyKey].loop(true); // Ensure loop is true
@@ -431,36 +439,45 @@ export function checkAndStartLobbyMusic(): void {
     });
     loopingSounds.add(lobbyKey); // Manage looping sounds
 
-    soundInstances[lobbyKey].once('load', () => {
-        console.log("Lobby sound loaded, playing now.");
-        if (settings.categories.lobby) { // Re-check settings before playing after load
+    soundInstances[lobbyKey].once("load", () => {
+      console.log("Lobby sound loaded, playing now.");
+      if (settings.categories.lobby) {
+        // Re-check settings before playing after load
+        soundInstances[lobbyKey].play();
+        lobbyMusicInitialized = true;
+      } else {
+        console.log(
+          "Lobby category got disabled while sound was loading. Not playing."
+        );
+        lobbyMusicInitialized = false;
+      }
+    });
+
+    soundInstances[lobbyKey].on("loaderror", (id, err) => {
+      console.error("Error loading lobby music:", err);
+      lobbyMusicInitialized = false;
+    });
+
+    soundInstances[lobbyKey].on("playerror", (id, err) => {
+      console.error("Error playing lobby music:", err);
+      lobbyMusicInitialized = false;
+      // Attempt to play again after a short delay if context was locked
+      if (Howler.ctx && Howler.ctx.state === "suspended") {
+        console.log(
+          "Audio context suspended, attempting to resume for lobby music."
+        );
+        Howler.ctx.resume().then(() => {
+          if (
+            settings.categories.lobby &&
+            soundInstances[lobbyKey] &&
+            !soundInstances[lobbyKey].playing()
+          ) {
+            console.log("Resuming lobby music play after context unlock.");
             soundInstances[lobbyKey].play();
             lobbyMusicInitialized = true;
-        } else {
-            console.log("Lobby category got disabled while sound was loading. Not playing.");
-            lobbyMusicInitialized = false;
-        }
-    });
-    
-    soundInstances[lobbyKey].on('loaderror', (id, err) => {
-        console.error("Error loading lobby music:", err);
-        lobbyMusicInitialized = false;
-    });
-    
-    soundInstances[lobbyKey].on('playerror', (id, err) => {
-        console.error("Error playing lobby music:", err);
-        lobbyMusicInitialized = false;
-         // Attempt to play again after a short delay if context was locked
-        if (Howler.ctx && Howler.ctx.state === 'suspended') {
-            console.log("Audio context suspended, attempting to resume for lobby music.");
-            Howler.ctx.resume().then(() => {
-                if (settings.categories.lobby && soundInstances[lobbyKey] && !soundInstances[lobbyKey].playing()) {
-                     console.log("Resuming lobby music play after context unlock.");
-                     soundInstances[lobbyKey].play();
-                     lobbyMusicInitialized = true;
-                }
-            });
-        }
+          }
+        });
+      }
     });
   }
 }
