@@ -28,6 +28,7 @@ import {
 
 // Icons
 import { Gamepad2, Users, Clock, ArrowRight } from "lucide-react";
+import GameFooter from "@/components/GameFooter";
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -518,6 +519,7 @@ export default function HomeScreen() {
       {/* Statistics Footer */}
       <div className="mt-16 relative z-10">
         <GameStatistics />
+        <GameFooter />
       </div>
     </div>
   );
