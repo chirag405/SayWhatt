@@ -130,12 +130,14 @@ export function VotingPhase({
     voteChannel
       .on("broadcast", { event: "vote-cast" }, (payload) => {
         // Play the appropriate vote sound based on the vote type
-        if (payload.payload.voteType === "up") {
-          // Ensure we respect sound settings
-          playSound(SOUND_PATHS.voteUp, "voting");
-        } else if (payload.payload.voteType === "down") {
-          // Ensure we respect sound settings
-          playSound(SOUND_PATHS.voteDown, "voting");
+        if (payload.payload.voterId !== currentUserId) {
+          if (payload.payload.voteType === "up") {
+            // Ensure we respect sound settings
+            playSound(SOUND_PATHS.voteUp, "voting");
+          } else if (payload.payload.voteType === "down") {
+            // Ensure we respect sound settings
+            playSound(SOUND_PATHS.voteDown, "voting");
+          }
         }
       })
       .subscribe((status) => {
@@ -173,7 +175,7 @@ export function VotingPhase({
           .send({
             type: "broadcast",
             event: "vote-cast",
-            payload: { voteType },
+            payload: { voteType, voterId: currentUserId },
           })
           .then(() => console.log(`${voteType} vote sound broadcast sent`))
           .catch((err) => console.error("Error broadcasting vote sound:", err));

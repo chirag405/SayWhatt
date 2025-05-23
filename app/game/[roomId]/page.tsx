@@ -36,6 +36,7 @@ import {
   playSound,
   stopAllSounds,
   SOUND_PATHS,
+  checkAndStartLobbyMusic,
 } from "@/utils/soundUtils";
 import { createClient } from "@/utils/supabase/client";
 import { Spotlight } from "@/components/ui/spotlight";
@@ -124,6 +125,7 @@ export default function GameScreen() {
   useEffect(() => {
     // Preload game-related sounds for later use
     preloadSounds();
+    checkAndStartLobbyMusic(); // Add this line
 
     // Instead of stopping all sounds, we'll keep lobby music playing
     // This allows continuous background music throughout the game
