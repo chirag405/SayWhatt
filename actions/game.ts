@@ -20,151 +20,44 @@ export async function startGame(roomId: string, userId: string) {
   const supabase = await createClient();
 
   try {
-    // 1. Verify room state
-    const { data: room, error: roomError } = await supabase
-      .from("rooms")
-      .select("*")
-      .eq("id", roomId)
-      .single();
+    // Invoke the Supabase Edge Function
+    const { data, error: invokeError } = await supabase.functions.invoke(
+      "initialize-game",
+      {
+        body: { roomId, userId },
+      }
+    );
 
-    if (roomError || !room) {
-      console.error("Room not found:", roomError);
-      throw new Error("Room not found");
+    if (invokeError) {
+      console.error("Error invoking initialize-game function:", invokeError);
+      throw new Error(
+        `Failed to invoke initialize-game function: ${invokeError.message}`
+      );
     }
 
-    if (room.game_status === "in_progress") {
-      console.log("Game already in progress");
-      return { success: true };
+    // The Edge Function returns a JSON response with { success, data/error }
+    // The 'data' here is the actual response *body* from the function.
+    if (data && data.success) {
+      console.log("Game started successfully via Edge Function:", data);
+      return {
+        success: true,
+        room: data.room,
+        round: data.round,
+        turn: data.turn,
+      };
+    } else {
+      // Handle errors returned by the Edge Function itself (e.g., validation, DB errors)
+      console.error("Error from initialize-game function:", data?.error);
+      throw new Error(data?.error || "Failed to initialize game");
     }
-
-    // 2. Validate host and game status
-    if (room.host_id !== userId) {
-      console.error("Non-host attempted to start game");
-      throw new Error("Only the host can start the game");
-    }
-
-    if (room.game_status !== "waiting") {
-      console.error("Invalid game status for starting:", room.game_status);
-      throw new Error("Game is not in waiting state");
-    }
-
-    // 3. Get players with error handling
-    const { data: players, error: playersError } = await supabase
-      .from("players")
-      .select("id")
-      .eq("room_id", roomId);
-
-    if (playersError) {
-      console.error("Error fetching players:", playersError);
-      throw new Error("Failed to fetch players");
-    }
-
-    if (!players?.length) {
-      console.error("No players in room");
-      throw new Error("No players in room");
-    }
-
-    if (players.length < 2) {
-      console.error("Not enough players to start game");
-      throw new Error("At least 2 players are required to start the game");
-    }
-
-    // 4. Transaction: Update room first with initial turn settings
-    const { error: updateError } = await supabase
-      .from("rooms")
-      .update({
-        game_status: "in_progress",
-        current_round: 1,
-        current_turn: 1,
-        round_voting_phase: false,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", roomId);
-
-    if (updateError) {
-      console.error("Failed to update room status:", updateError);
-      throw new Error("Failed to update room status");
-    }
-
-    // 5. Create first round with explicit error handling
-    const { data: newRound, error: roundError } = await supabase
-      .from("rounds")
-      .insert([
-        {
-          room_id: roomId,
-          round_number: 1,
-          status: "selecting_category",
-          is_complete: false,
-          remaining_deciders: players.length - 1,
-          current_turn: 1,
-        },
-      ])
-      .select()
-      .single();
-
-    if (roundError || !newRound) {
-      console.error("Round creation failed:", roundError);
-      // Attempt to rollback
-      await supabase
-        .from("rooms")
-        .update({
-          game_status: "waiting",
-          current_round: null,
-          current_turn: null,
-        })
-        .eq("id", roomId);
-
-      throw new Error("Failed to create round");
-    }
-
-    // 6. Create first turn with the first decider
-    const { data: newTurn, error: turnError } = await supabase
-      .from("turns")
-      .insert([
-        {
-          round_id: newRound.id,
-          turn_number: 1,
-          decider_id: players[0].id,
-          status: "selecting_category",
-        },
-      ])
-      .select()
-      .single();
-
-    if (turnError || !newTurn) {
-      console.error("Turn creation failed:", turnError);
-      // Attempt to rollback
-      await supabase.from("rounds").delete().eq("id", newRound.id);
-      await supabase
-        .from("rooms")
-        .update({
-          game_status: "waiting",
-          current_round: null,
-          current_turn: null,
-        })
-        .eq("id", roomId);
-
-      throw new Error("Failed to create turn");
-    }
-
-    // 7. Add first decider to decider history
-    await supabase.from("decider_history").insert({
-      round_id: newRound.id,
-      player_id: players[0].id,
-      turn_number: 1,
-    });
-
-    // 8. Mark player as having been decider
-    await supabase
-      .from("players")
-      .update({ has_been_decider: true })
-      .eq("id", players[0].id);
-
-    console.log("Game started successfully");
-    return { success: true };
   } catch (error) {
-    console.error("Error in startGame:", error);
-    throw error;
+    // This catch block handles errors from invoking the function or other unexpected errors
+    console.error("Error in startGame action:", error);
+    // Ensure the error thrown is an Error object or has a meaningful message
+    if (error instanceof Error) {
+      throw error;
+    }
+    throw new Error(String(error) || "An unknown error occurred in startGame");
   }
 }
 export async function selectCategory(

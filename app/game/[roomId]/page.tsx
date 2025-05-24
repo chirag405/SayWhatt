@@ -379,48 +379,117 @@ export default function GameScreen() {
       supabase.removeChannel(playerDepartureChannel);
     };
   }, [roomId, currentUser?.id, fetchRoomById]);
-  // Data initialization and subscriptions
+  // Main Data Loading useEffect
   useEffect(() => {
-    if (!roomId) return;
-
-    // Removed duplicate reload handler - now using the universal ReloadHandler component
+    if (!roomId) {
+      setError("No Room ID found. Cannot load game.");
+      setIsLoading(false);
+      return;
+    }
 
     let mounted = true;
     const cleanupFunctions: (() => void)[] = [];
+    
+    setIsLoading(true);
+    setError(null);
+    setAnimationComplete(false); // Reset animationComplete at the start of loading
 
-    const initGame = async () => {
-      if (!mounted) return;
-      setIsLoading(true);
-
+    const initializeGame = async () => {
       try {
         const roomResult = await fetchRoomById(roomId);
-        if (!roomResult.success)
-          throw new Error(roomResult.error || "Failed to fetch room");
-        if (!mounted) return;
+        if (!mounted) return; 
+        if (!roomResult.success || !roomResult.room) {
+          throw new Error(roomResult.error || "Failed to fetch essential room data.");
+        }
 
         await fetchPlayersInRoom(roomId);
-        cleanupFunctions.push(
-          subscribeToRoom(roomId),
-          subscribeToPlayers(roomId),
-          subscribeToGame(roomId),
-          subscribeToRounds(roomId)
-        );
-        setSubscriptionsActive((prev) => ({ ...prev, main: true }));
-        setIsLoading(false);
-        setTimeout(() => mounted && setAnimationComplete(true), 1000);
+        if (!mounted) return;
+        
+        // Setup subscriptions
+        cleanupFunctions.push(subscribeToRoom(roomId));
+        cleanupFunctions.push(subscribeToPlayers(roomId));
+        cleanupFunctions.push(subscribeToGame(roomId)); 
+        cleanupFunctions.push(subscribeToRounds(roomId));
+        // setSubscriptionsActive can be removed if not used for UI logic
+
+        // Allow a brief moment for initial data to flow in from subscriptions
+        await new Promise(resolve => setTimeout(resolve, 1500)); 
+        if (!mounted) return;
+
+        // Critical data checks using getState for the most current snapshot
+        const { 
+          currentRoom: finalRoomState, 
+          currentRound: finalRoundState, 
+          currentTurn: finalTurnState 
+        } = useUserRoomStore.getState();
+
+        if (finalRoomState?.game_status === "in_progress") {
+          if (!finalRoomState) { 
+             throw new Error("Critical error: Room data disappeared after initial load. Please refresh.");
+          }
+          if (!finalRoundState) {
+            throw new Error("Game is active, but current round information is unavailable. Please refresh.");
+          }
+          if (!finalTurnState) {
+            throw new Error("Game is active, but current turn details are missing. Please refresh.");
+          }
+        } else if (finalRoomState?.game_status !== "waiting" && finalRoomState?.game_status !== "completed") {
+          // If status is unexpected, treat as an error
+          throw new Error(`Unexpected game status: '${finalRoomState?.game_status || "unknown"}'. Please refresh.`);
+        }
+        
+        // If all checks pass
+        if (mounted) setIsLoading(false);
+
       } catch (err) {
         console.error("[GameScreen] Error initializing game:", err);
-        if (mounted) setError("Failed to load game. Please try again.");
-        setIsLoading(false);
+        if (mounted) {
+          setError(err instanceof Error ? err.message : "An unknown error occurred while loading the game. Please try refreshing.");
+          setIsLoading(false); 
+        }
       }
     };
 
-    initGame();
+    initializeGame();
+
+    const timeoutId = setTimeout(() => {
+      if (mounted && isLoading) { // Check component's isLoading state from its own scope
+        console.error("[GameScreen] Game initialization timed out after 20 seconds.");
+        setError("The game is taking an unusually long time to load. Please check your internet connection and try refreshing the page.");
+        setIsLoading(false); 
+      }
+    }, 20000); // 20 seconds timeout
+
     return () => {
       mounted = false;
-      cleanupFunctions.forEach((cleanup) => cleanup());
+      clearTimeout(timeoutId);
+      cleanupFunctions.forEach((cleanup) => {
+        try { cleanup(); } catch (e) { console.error("Error in main data loading cleanup:", e); }
+      });
+      // setSubscriptionsActive can be removed if not used for UI logic
     };
-  }, [roomId]);
+  }, [roomId, fetchRoomById, fetchPlayersInRoom, subscribeToRoom, subscribeToPlayers, subscribeToGame, subscribeToRounds]);
+
+  // useEffect for setting animationComplete
+  useEffect(() => {
+    let animationTimer: NodeJS.Timeout;
+    let isEffectMounted = true; // Local mounted flag for this specific effect
+
+    if (!isLoading && !error) { 
+      animationTimer = setTimeout(() => {
+        if (isEffectMounted) { // Check local mounted flag
+           setAnimationComplete(true);
+        }
+      }, 1000); // 1-second delay
+    } else {
+      setAnimationComplete(false); 
+    }
+
+    return () => {
+      isEffectMounted = false; // Set to false on cleanup
+      clearTimeout(animationTimer);
+    };
+  }, [isLoading, error]);
 
   // Turn and round subscriptions
   useEffect(() => {
@@ -693,6 +762,15 @@ export default function GameScreen() {
                 >
                   <Home className="h-4 w-4" />
                   <span>Return to Home Base</span>
+                </GradientButton>
+                <GradientButton
+                  onClick={() => window.location.reload()}
+                  className="w-full flex items-center justify-center gap-2 mt-3"
+                  gradientFrom="from-blue-600"
+                  gradientTo="to-blue-700"
+                >
+                  <Zap className="h-4 w-4" /> {/* Using Zap for Refresh/Try Again icon */}
+                  <span>Try Again</span>
                 </GradientButton>
               </div>
             </CardItem>

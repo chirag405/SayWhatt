@@ -79,9 +79,11 @@ export default function LobbyScreen() {
 
   const { startGame } = useGameStore();
 
+  const [isLoadingRoom, setIsLoadingRoom] = useState(true);
+  const [initialLoadError, setInitialLoadError] = useState<string | null>(null);
   const [isLeaving, setIsLeaving] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
-  const [error, setError] = useState("");
+  // const [error, setError] = useState(""); // Replaced by initialLoadError for initial load phase
   const [subscriptionsActive, setSubscriptionsActive] = useState(false); // Kept for dev info
   const [showHelp, setShowHelp] = useState(false);
   const [copySuccess, setCopySuccess] = useState(""); // Changed to string for better animation key
@@ -113,69 +115,87 @@ export default function LobbyScreen() {
   useEffect(() => {
     let mounted = true;
     const loadData = async () => {
+      setIsLoadingRoom(true); // Set loading true at the start
+      setInitialLoadError(null); // Reset error
       try {
         if (!params.roomId) {
           router.push("/");
           return;
         }
-        if (!currentRoom || currentRoom.id !== params.roomId) {
-          const {
-            room,
-            success,
-            error: fetchError,
-          } = await fetchRoomById(params.roomId as string);
-          if (!mounted) return;
-          if (!success || !room) {
-            console.log("Failed to fetch room:", fetchError);
-            router.push("/");
-            return;
-          }
-          if (room.game_status === "in_progress") {
-            showToast({
-              message: "This game has already started!",
-              type: "error",
-              duration: 5000,
-              position: "top-center",
-            });
-            setTimeout(() => {
-              router.push("/");
-            }, 2000);
-            return;
-          }
-        }
+
+        // Fetch initial room details
+        // The store's fetchRoomById updates currentRoom, so we'll use that.
+        const {
+          room,
+          success,
+          error: fetchError,
+        } = await fetchRoomById(params.roomId as string);
+
         if (!mounted) return;
-        if (currentRoom?.game_status === "in_progress") {
-          showToast({
-            message: "This game has already started!",
-            type: "error",
-            duration: 5000,
-            position: "top-center",
-          });
-          setTimeout(() => {
-            router.push("/");
-          }, 2000);
+
+        if (!success || !room) {
+          console.log("Failed to fetch room:", fetchError);
+          setInitialLoadError(fetchError || "Failed to load room details. The game portal may be offline or the code is invalid.");
+          setIsLoadingRoom(false);
+          // Potentially redirect or show error prominently, handled by main loading UI block
           return;
         }
-        if (!currentUser) {
-          router.push("/");
-          return;
+        // Successfully fetched room, currentRoom in store is updated.
+        // No need to call setIsLoadingRoom(false) immediately, 
+        // let the main loading UI block use the new currentRoom from store.
+
+        // Check game status after room is fetched
+        if (room.game_status === "in_progress" && currentUser) {
+          // This redirection is also handled by another useEffect, but good to have a check here.
+          router.push(`/game/${room.id}`);
+          return; 
         }
-        if (currentRoom && mounted) {
-          await fetchPlayersInRoom(currentRoom.id);
+        if (room.game_status === "in_progress" && !currentUser) {
+           showToast({
+             message: "This game has already started! Joining process pending user authentication.",
+             type: "info",
+             duration: 5000,
+           });
+           // User will be redirected once currentUser is available due to the other useEffect.
         }
+
+        // Fetch players if room is valid and user is present
+        // currentRoom from the store should be up-to-date due to fetchRoomById above
+        if (currentRoom && mounted && currentUser) { 
+          const { success: playersSuccess, error: playersError } = await fetchPlayersInRoom(currentRoom.id);
+          if (!mounted) return;
+          if (!playersSuccess) {
+            console.error("Failed to fetch players:", playersError);
+            showToast({ message: `Warning: Could not fully sync player list. ${playersError}`, type: "warning" });
+          }
+        }
+        // If all initial data loads are successful (or non-critical errors toasted)
+        setIsLoadingRoom(false);
+
       } catch (err) {
         console.error("Error in loadData:", err);
-        if (mounted)
-          setError(
-            "System Malfunction: Failed to load game data. Please try re-entering the portal."
-          );
+        if (mounted) {
+          setInitialLoadError("System Malfunction: Failed to load game data. Please try re-entering the portal.");
+          setIsLoadingRoom(false);
+        }
       }
     };
+
+    // We need currentUser to be available before attempting to load sensitive room data or player lists.
+    // The main loading UI will handle the !currentUser case.
+    // if (currentUser) { // This condition can be tricky with isLoaded from Clerk
     loadData();
+    // } else if (!currentUser && params.roomId) {
+      // If no current user but we have a room ID, it might be a direct link access.
+      // The main loading UI will show "Authenticating..."
+      // setIsLoadingRoom(false); // Not strictly loading room data yet, but user auth is the blocker.
+    // }
+
+
     return () => {
       mounted = false;
     };
-  }, [params.roomId, currentRoom?.id]); // Added currentRoom.id to dependencies
+  }, [params.roomId, fetchRoomById, fetchPlayersInRoom, currentUser, router, showToast, currentRoom?.id]); // Added dependencies, currentRoom.id for re-trigger if it changes unexpectedly
 
   useEffect(() => {
     if (!currentRoom?.id) return;
@@ -220,7 +240,7 @@ export default function LobbyScreen() {
 
   useEffect(() => {
     let redirectTimeout: NodeJS.Timeout;
-    if (currentRoom?.game_status === "in_progress") {
+    if (currentRoom?.game_status === "in_progress" && currentUser) { // Added currentUser check
       redirectTimeout = setTimeout(
         () => router.push(`/game/${currentRoom.id}`),
         100
@@ -229,7 +249,7 @@ export default function LobbyScreen() {
     return () => {
       if (redirectTimeout) clearTimeout(redirectTimeout);
     };
-  }, [currentRoom?.game_status, router, currentRoom?.id]);
+  }, [currentRoom?.game_status, currentUser, router, currentRoom?.id]); // Added currentUser to dependency array
 
   const handleStartGame = async () => {
     if (!currentRoom || !currentUser) {
@@ -269,7 +289,7 @@ export default function LobbyScreen() {
       } catch (err) {
         console.error("Error polling status:", err);
       }
-    }, 3000);
+    }, 10000); // Changed to 10 seconds
     return () => clearInterval(statusInterval);
   }, [currentRoom?.id, refreshRoomStatus]);
 
@@ -329,10 +349,24 @@ export default function LobbyScreen() {
 
   // Removed duplicate reload handler - now using the universal ReloadHandler component
 
-  if (!currentRoom || !currentUser) {
+  if (isLoadingRoom || !currentUser) { // Primary condition for showing loader
+    let loadingText = "Initializing Connection...";
+    if (initialLoadError) {
+      loadingText = "Error Encountered"; // This text will be shown by GamifiedLoader
+    } else if (isLoadingRoom && !currentRoom) {
+      loadingText = "Accessing Game Portal...";
+    } else if (!currentUser) {
+      // This implies Clerk is still loading or user is not logged in.
+      // useUser hook's isLoaded could be used here for more precise state if needed.
+      loadingText = "Authenticating Operative...";
+    } else if (!currentRoom) { 
+      // This case might occur if isLoadingRoom is false, currentUser is true, but currentRoom is still null.
+      // This could indicate an issue post-fetch or if fetch didn't set currentRoom properly.
+      loadingText = "Locating Room Coordinates...";
+    }
+    
     return (
       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden">
-        {/* Background Effects */}
         <CosmicParticlesBackground
           particleColors={[
             "rgba(59, 130, 246, 0.6)",
@@ -344,30 +378,61 @@ export default function LobbyScreen() {
           particleCount={80}
           connectionDistance={150}
         />
-        {/* Single Vortex component for the loading state */}
-        {/* <Vortex
-          backgroundColor="transparent"
-          className="fixed inset-0 w-full h-full z-0"
-          baseHue={260}
-          rangeY={200}
-        /> */}
-
         <CardContainer className="relative z-10">
           <CardBody className="bg-slate-900/70 backdrop-blur-lg border border-slate-700 rounded-2xl p-8 shadow-2xl shadow-purple-500/30">
-            <GamifiedLoader
-              text={error ? "Error Encountered" : "Entering Lobby Matrix..."}
-            />
-            {error && (
-              <CardItem translateZ={20} className="w-full mt-4">
+            <GamifiedLoader text={loadingText} />
+            {initialLoadError && (
+              <CardItem translateZ={20} className="w-full mt-4 text-center">
                 <motion.p
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-red-400 text-center p-3 bg-red-700/20 border border-red-500/50 rounded-lg"
+                  className="text-red-400 p-3 bg-red-700/20 border border-red-500/50 rounded-lg"
                 >
-                  <AlertTriangle className="inline h-5 w-5 mr-2" /> {error}
+                  <AlertTriangle className="inline h-5 w-5 mr-2" /> {initialLoadError}
                 </motion.p>
+                <AceternityButton // Using the imported Button alias
+                  borderRadius="1.75rem"
+                  className="bg-red-700 hover:bg-red-800 text-white mt-3" 
+                  onClick={() => router.push("/")}
+                  // Ensure AceternityButton props match its definition, e.g., it might expect text content or children
+                >
+                  Return to Home Base
+                </AceternityButton>
               </CardItem>
             )}
+          </CardBody>
+        </CardContainer>
+      </div>
+    );
+  }
+
+  // Fallback if isLoadingRoom is false, currentUser exists, but currentRoom is still null
+  // This indicates an issue that wasn't caught by initialLoadError, or data inconsistency.
+  if (!currentRoom) {
+    return (
+       <div className="min-h-screen bg-black flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        <CosmicParticlesBackground
+          particleColors={[ /* ... */ ]}
+        />
+        <CardContainer className="relative z-10">
+          <CardBody className="bg-slate-900/70 backdrop-blur-lg border border-slate-700 rounded-2xl p-8 shadow-2xl shadow-purple-500/30">
+            <GamifiedLoader text={"Error: Room data unavailable."} />
+            <CardItem translateZ={20} className="w-full mt-4 text-center">
+                <motion.p
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className="text-red-400 p-3 bg-red-700/20 border border-red-500/50 rounded-lg"
+                >
+                  <AlertTriangle className="inline h-5 w-5 mr-2" /> Lost connection to the game portal. Please try returning home.
+                </motion.p>
+                <AceternityButton
+                  borderRadius="1.75rem"
+                  className="bg-red-700 hover:bg-red-800 text-white mt-3"
+                  onClick={() => router.push("/")}
+                >
+                  Return to Home Base
+                </AceternityButton>
+              </CardItem>
           </CardBody>
         </CardContainer>
       </div>
@@ -631,14 +696,14 @@ export default function LobbyScreen() {
           </div>
 
           {/* Error Display */}
-          {error && (
+          {initialLoadError && ( // Changed from error to initialLoadError for consistency if this section is meant for initial load errors
             <CardItem translateZ={20} className="w-full max-w-lg mx-auto mt-4">
               <motion.p
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="text-center text-red-300 bg-red-900/40 px-6 py-3 rounded-lg border border-red-700/60 shadow-md"
               >
-                <AlertTriangle className="inline h-5 w-5 mr-2" /> {error}
+                <AlertTriangle className="inline h-5 w-5 mr-2" /> {initialLoadError}
               </motion.p>
             </CardItem>
           )}

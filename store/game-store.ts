@@ -23,7 +23,7 @@ import { nextRound, nextTurn, selectCategory } from "@/actions/game";
 interface GameStoreState {
   currentGame: GameState | null;
   currentScenario: Scenario | null;
-  currentTurn: Turn | null;
+  // currentTurn: Turn | null; // Removed
   answers: Answer[];
   votes: Vote[];
   timerEnd: Date | null;
@@ -74,7 +74,7 @@ interface GameStoreState {
 export const useGameStore = create<GameStoreState>((set, get) => ({
   currentGame: null,
   currentScenario: null,
-  currentTurn: null,
+  // currentTurn: null, // Removed
   answers: [],
   votes: [],
   timerEnd: null,
@@ -135,13 +135,13 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
 
         turns = turnsData || [];
 
-        // Find current turn
-        const currentTurn = turns.find(
-          (t) => t.turn_number === room.current_turn
-        );
-        if (currentTurn) {
-          set({ currentTurn });
-        }
+        // Find current turn - This logic is removed as currentTurn is no longer in game-store
+        // const currentTurn = turns.find(
+        //   (t) => t.turn_number === room.current_turn
+        // );
+        // if (currentTurn) {
+        //   set({ currentTurn }); 
+        // }
       }
 
       // Update state
@@ -233,36 +233,63 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
           async (payload) => {
             const newTurn = payload.new as Turn;
 
-            // Update currentTurn
-            set({ currentTurn: newTurn });
-
-            // If turn has a scenario_id, fetch and update current scenario
-            if (newTurn.scenario_id) {
-              try {
-                const scenario = await get().getScenarioById(
-                  newTurn.scenario_id
-                );
-                set({ currentScenario: scenario });
-              } catch (error) {
-                console.error("Failed to fetch scenario:", error);
+            const newTurnData = payload.new as Turn;
+            set((state) => {
+              if (state.currentGame) {
+                const turnIndex = state.currentGame.turns.findIndex(t => t.id === newTurnData.id);
+                let newTurnsArray = [...state.currentGame.turns];
+                if (turnIndex !== -1) {
+                  newTurnsArray[turnIndex] = newTurnData;
+                } else {
+                  newTurnsArray.push(newTurnData);
+                  // Optionally sort if order matters and might be disrupted
+                  newTurnsArray.sort((a, b) => a.turn_number - b.turn_number);
+                }
+                // If turn has a scenario_id, fetch and update current scenario
+                if (newTurnData.scenario_id) {
+                    get().getScenarioById(newTurnData.scenario_id)
+                        .then(scenario => set({ currentScenario: scenario }))
+                        .catch(error => console.error("Failed to fetch scenario:", error));
+                }
+                return { 
+                    currentGame: { 
+                        ...state.currentGame, 
+                        turns: newTurnsArray 
+                    } 
+                };
               }
-            }
-
-            // Refresh overall game state
-            fetchAndUpdateGame();
+              // If newTurnData.scenario_id, fetch and update current scenario even if currentGame is null
+              // This case should be rare if subscriptions are set up correctly after initial load.
+              else if (newTurnData.scenario_id) {
+                 get().getScenarioById(newTurnData.scenario_id)
+                        .then(scenario => set({ currentScenario: scenario }))
+                        .catch(error => console.error("Failed to fetch scenario:", error));
+              }
+              return state; // No change if currentGame is null and no scenario_id
+            });
+            // Refresh overall game state to ensure full consistency if other parts depend on this turn implicitly
+            // However, this might cause re-renders. Fine-grained updates are preferred.
+            // Consider if fetchAndUpdateGame() is strictly necessary here or if derived state can handle it.
+            // For now, let's keep it to ensure data integrity across potentially complex states.
+            fetchAndUpdateGame(); 
           }
         )
         .subscribe();
-
-      return turnChannel;
+      
+      return () => supabase.removeChannel(turnChannel);
     };
 
     const turnChannel = setupTurnSubscription();
-
-    // Return cleanup function
+    
     return () => {
       supabase.removeChannel(channel);
-      if (turnChannel) supabase.removeChannel(turnChannel);
+      if (turnChannel && typeof turnChannel.unsubscribe === 'function') {
+         turnChannel.unsubscribe();
+      } else if (turnChannel) {
+        // if turnChannel is just the supabase client instance due to early return
+        // there's no specific channel to remove here beyond the main `channel`.
+        // This path implies `roundIds` was empty and `setupTurnSubscription` returned early.
+      }
     };
   },
 
@@ -417,15 +444,39 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
           console.log("Turn subscription payload:", payload);
 
           const newTurn = payload.new as Turn;
-          console.log("Turn updated:---", newTurn);
+          console.log("Turn updated:---", payload.new);
+          
+          set((state) => {
+            if (state.currentGame) {
+              const updatedTurn = payload.new as Turn;
+              const turnIndex = state.currentGame.turns.findIndex(t => t.id === updatedTurn.id);
+              let newTurnsArray = [...state.currentGame.turns];
 
-          // Make sure to update both the currentTurn in your store AND notify components
-          set((state) => ({
-            currentTurn: newTurn,
-            // Optionally update any other state that depends on the turn
-          }));
+              if (payload.eventType === 'DELETE') {
+                newTurnsArray = newTurnsArray.filter(t => t.id !== (payload.old as Turn).id);
+              } else if (turnIndex !== -1) {
+                newTurnsArray[turnIndex] = updatedTurn;
+              } else if (payload.eventType === 'INSERT') {
+                newTurnsArray.push(updatedTurn);
+                newTurnsArray.sort((a,b) => a.turn_number - b.turn_number);
+              }
+              
+              // Update scenario if applicable
+              if (updatedTurn?.scenario_id && payload.eventType !== 'DELETE') {
+                 get().getScenarioById(updatedTurn.scenario_id)
+                        .then(scenario => set({ currentScenario: scenario }))
+                        .catch(error => console.error("Failed to fetch scenario:", error));
+              } else if (payload.eventType === 'DELETE' && state.currentScenario?.turn_id === (payload.old as Turn).id) {
+                 set({ currentScenario: null });
+              }
 
-          // If status has changed to voting, refresh answers
+              return { currentGame: { ...state.currentGame, turns: newTurnsArray } };
+            }
+            return state;
+          });
+
+          // If status has changed to voting, refresh answers for the *new* turn
+          const newTurnData = payload.new as Turn;
           if (
             newTurn.status === "selecting_scenario" ||
             newTurn.status === "voting"
@@ -434,7 +485,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
             const { data: answers } = await supabase
               .from("answers")
               .select("*")
-              .eq("turn_id", newTurn.id);
+              .eq("turn_id", newTurnData.id);
 
             if (answers) {
               set({ answers });
@@ -444,13 +495,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       )
       .subscribe();
 
-    // Make sure we're actually getting a response from the subscription
-    console.log(`Subscription to turns:${roundId} created`);
-
-    return () => {
-      console.log(`Removing subscription for turns:${roundId}`);
-      supabase.removeChannel(subscription);
-    };
+    console.log(`Subscription to turns:${roundId} created`); // Keep for dev
+    return () => supabase.removeChannel(subscription);
   },
 
   startGame: async (roomId, userId) => {
@@ -461,32 +507,41 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       const result = await actions.startGame(roomId, userId);
       if (!result?.success) throw new Error("Failed to start game");
 
-      // Force a direct update to the room status
-      const supabase = createClient();
-      await supabase
-        .from("rooms")
-        .update({ game_status: "in_progress" })
-        .eq("id", roomId);
+      // Update the store with the new game state from the server action result
+      set((state) => {
+        if (!state.currentGame) {
+          // This case should ideally not happen if startGame is called after room creation
+          // But as a fallback, initialize parts of currentGame
+          state.currentGame = {
+            room: result.room,
+            rounds: [result.round],
+            players: [], // Players will be populated by subscriptions
+            turns: [result.turn],
+          };
+        } else {
+          state.currentGame.room = result.room;
+          // Ensure rounds and turns are updated correctly
+          // Avoid duplicates if subscriptions also fire
+          const roundExists = state.currentGame.rounds.some(r => r.id === result.round.id);
+          if (!roundExists) {
+            state.currentGame.rounds.push(result.round);
+          } else {
+            state.currentGame.rounds = state.currentGame.rounds.map(r => r.id === result.round.id ? result.round : r);
+          }
 
-      // IMPORTANT: Fetch the updated room data to ensure state is consistent
-      const { data: updatedRoom } = await supabase
-        .from("rooms")
-        .select("*")
-        .eq("id", roomId)
-        .single();
-
-      // Update the local state immediately with the new room status
-      set((state) => ({
-        currentGame: state.currentGame
-          ? {
-              ...state.currentGame,
-              room: updatedRoom,
-            }
-          : null,
-      }));
+          const turnExists = state.currentGame.turns.some(t => t.id === result.turn.id);
+          if (!turnExists) {
+            state.currentGame.turns.push(result.turn);
+          } else {
+            state.currentGame.turns = state.currentGame.turns.map(t => t.id === result.turn.id ? result.turn : t);
+          }
+        }
+        // state.currentTurn = result.turn; // Removed: currentTurn is not part of game-store
+        return { ...state }; 
+      });
 
       console.log(
-        "Game started successfully, room status updated to in_progress"
+        "Game started successfully, store updated with initial game state."
       );
 
       // Initialize subscriptions
@@ -514,18 +569,8 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
         return false;
       }
       if (result) {
-        // Optimistic update - only do this if we get a success response
-        set((state) => {
-          if (!state.currentTurn) return state;
-
-          return {
-            currentTurn: {
-              ...state.currentTurn,
-              category,
-              status: "selecting_scenario",
-            },
-          };
-        });
+        // Optimistic update is removed as currentTurn is not in this store.
+        // UI should react to user-room-store.currentTurn or currentGame.turns updates.
         return true;
       } else {
         console.error("Category selection failed - server returned false");
@@ -563,43 +608,25 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
               ...state.currentGame,
               room: latestRoom || state.currentGame.room,
             },
-            currentTurn: currentTurn || state.currentTurn,
+            // currentTurn: currentTurn || state.currentTurn, // Removed
           };
         });
       });
 
-    // Update gameStore with the latest data
+    // Update gameStore with the latest data from userRoomStore's currentRoom
+    // currentTurn related logic is removed.
     if (currentRoom) {
       set((state) => {
-        // Only update if we have a currentGame
         if (!state.currentGame) return state;
-
         return {
           currentGame: {
             ...state.currentGame,
             room: currentRoom,
           },
-          currentTurn: currentTurn || state.currentTurn,
         };
       });
     }
-
-    // If we have a round ID but no currentTurn, fetch it
-    if (currentRound?.id && !currentTurn) {
-      get()
-        .fetchTurnById(currentRound.id)
-        .then((turn) => {
-          if (turn) {
-            set({ currentTurn: turn });
-
-            // Also update turn in userRoomStore
-            const { setCurrentTurn } = useUserRoomStore.getState();
-            if (setCurrentTurn) {
-              setCurrentTurn(turn);
-            }
-          }
-        });
-    }
+    // Removed logic for fetching/setting game-store.currentTurn based on currentRound.id
   },
 
   generateScenarios: async (turnId) => {
@@ -773,21 +800,24 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   },
   processAfterVoting: async (roomId: string): Promise<boolean> => {
     try {
-      const { currentGame, currentTurn } = get();
+      // Get currentTurn from userRoomStore as it's the source of truth for global currentTurn
+      const { currentTurn: globalCurrentTurn } = useUserRoomStore.getState();
+      const { currentGame } = get();
 
-      if (!currentGame || !currentTurn) {
-        console.error("No active game or turn in processAfterVoting");
+
+      if (!currentGame || !globalCurrentTurn) {
+        console.error("No active game or global currentTurn in processAfterVoting. currentGame:", currentGame, "globalCurrentTurn:", globalCurrentTurn);
         return false;
       }
 
-      // Get current turn ID
-      const turnId = currentTurn.id;
+      // Get current turn ID from the global currentTurn
+      const turnId = globalCurrentTurn.id;
       if (!turnId) {
-        console.error("No turn ID available for processAfterVoting");
+        console.error("No turn ID available from globalCurrentTurn for processAfterVoting");
         return false;
       }
 
-      // Call nextTurn with the current turn ID
+      // Call nextTurn with the current turn ID (from global state)
       const result = await actions.nextTurn(turnId);
 
       // Reset local state for next turn
@@ -841,7 +871,7 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     set({
       currentGame: null,
       currentScenario: null,
-      currentTurn: null,
+      // currentTurn: null, // Removed
       answers: [],
       votes: [],
       timerEnd: null,
