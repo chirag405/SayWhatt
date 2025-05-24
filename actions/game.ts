@@ -537,10 +537,9 @@ Feedback: [Your Feedback Here]
 
   const specificPersonaPrompt =
     systemPrompts[turnDetails.category] || systemPrompts["Hilarious Chaos"];
-  
+
   // Initialize the AI model (new pattern)
-  const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY || "");
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+  const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
   for (const answer of answers || []) {
     try {
@@ -561,19 +560,32 @@ Answer: "${answer.answer_text}"
       // const text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
       // New SDK usage:
-      const result = await model.generateContent(prompt);
-      const response = result.response;
-      const text = response.text();
-      
+      const result = await genAI.models.generateContent({
+        model: "gemini-2.0-flash",
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+      });
+
+      const response = result;
+      const text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
       console.log("Raw AI Response for answer ID", answer.id, ":", text);
 
       const scoreMatch = text.match(/Score:\s*(\d+)/);
-      const feedbackMatch = text.match(/Feedback:\s*(.+)/s); // Added 's' flag for multiline feedback
+      const feedbackMatch = text.match(/Feedback:\s*([\s\S]+)/); // Using [\s\S]+ to match across multiple lines
 
       const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 0; // Default to 0
       const feedback = feedbackMatch?.[1]?.trim() || "No feedback provided."; // Trim feedback and default
       const ai_points = Math.min(7, Math.max(0, score)); // Clamp 0-7
-      console.log("Parsed Score:", score, "Parsed Feedback:", `"${feedback}"`, "AI Points to save:", ai_points, "for answer ID", answer.id);
+      console.log(
+        "Parsed Score:",
+        score,
+        "Parsed Feedback:",
+        `"${feedback}"`,
+        "AI Points to save:",
+        ai_points,
+        "for answer ID",
+        answer.id
+      );
 
       const { data: updatedAnswerData, error: updateError } = await supabase
         .from("answers")
@@ -594,10 +606,19 @@ Answer: "${answer.answer_text}"
           payload: { answer: updatedAnswerData[0] },
         });
       } else {
-        console.log("Answer update for ID:", answer.id, "did not return data, but no error reported.");
+        console.log(
+          "Answer update for ID:",
+          answer.id,
+          "did not return data, but no error reported."
+        );
       }
     } catch (error) {
-      console.error("AI processing failed for answer ID", answer.id, ":", error);
+      console.error(
+        "AI processing failed for answer ID",
+        answer.id,
+        ":",
+        error
+      );
       const { data: errorAnswer } = await supabase
         .from("answers")
         .update({
@@ -627,10 +648,24 @@ Answer: "${answer.answer_text}"
   return true;
 }
 
-export async function submitVote(answerId: string, voterId: string) {
+export async function submitVote(
+  answerId: string,
+  voterId: string,
+  voteType: "up" | "down" = "up"
+) {
   const supabase = await createClient();
 
   try {
+    // For downvotes, we don't insert anything into the votes table
+    if (voteType === "down") {
+      // Return empty successful result for downvotes
+      console.log("Downvote registered (no database change)");
+      return [
+        { id: `no-op-${Date.now()}`, answer_id: answerId, voter_id: voterId },
+      ];
+    }
+
+    // For upvotes, we insert a record that will trigger the points update
     const { data, error } = await supabase
       .from("votes")
       .insert([{ answer_id: answerId, voter_id: voterId }])
@@ -641,7 +676,7 @@ export async function submitVote(answerId: string, voterId: string) {
       throw error;
     }
 
-    console.log("Vote submitted successfully:", data);
+    console.log("Upvote submitted successfully:", data);
     return data;
   } catch (error) {
     console.error("Unexpected error in submitVote:", error);
@@ -683,7 +718,9 @@ export async function nextTurn(
     if (!room) throw new Error("Room not found");
 
     // --- BEGIN POINT ASSIGNMENT DIAGNOSTIC LOGGING ---
-    console.log(`[Point Diagnostics] nextTurn called for turnId: ${turnId}. Current turn number: ${currentTurn.turn_number}, Round number: ${round.round_number}`);
+    console.log(
+      `[Point Diagnostics] nextTurn called for turnId: ${turnId}. Current turn number: ${currentTurn.turn_number}, Round number: ${round.round_number}`
+    );
 
     // Fetch answers for the current turn
     const { data: turnAnswers, error: answersError } = await supabase
@@ -692,7 +729,11 @@ export async function nextTurn(
       .eq("turn_id", turnId);
 
     if (answersError) {
-      console.error("[Point Diagnostics] Error fetching answers for turn:", turnId, answersError);
+      console.error(
+        "[Point Diagnostics] Error fetching answers for turn:",
+        turnId,
+        answersError
+      );
     } else {
       console.log("[Point Diagnostics] Answers for turn:", turnId, turnAnswers);
     }
@@ -704,9 +745,17 @@ export async function nextTurn(
       .eq("room_id", round.room_id);
 
     if (playersError) {
-      console.error("[Point Diagnostics] Error fetching players for room:", round.room_id, playersError);
+      console.error(
+        "[Point Diagnostics] Error fetching players for room:",
+        round.room_id,
+        playersError
+      );
     } else {
-      console.log("[Point Diagnostics] Player points in room:", round.room_id, roomPlayers);
+      console.log(
+        "[Point Diagnostics] Player points in room:",
+        round.room_id,
+        roomPlayers
+      );
     }
     // --- END POINT ASSIGNMENT DIAGNOSTIC LOGGING ---
 

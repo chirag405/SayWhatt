@@ -412,33 +412,42 @@ export default function GameScreen() {
         // ---- NEW: Wait for critical data with timeout ----
         const criticalDataPromise = new Promise<void>((resolve, reject) => {
           const timeoutId = setTimeout(() => {
-            reject(new Error("Timeout waiting for critical game data. Game might be out of sync."));
+            reject(
+              new Error(
+                "Timeout waiting for critical game data. Game might be out of sync."
+              )
+            );
           }, 15000); // 15-second timeout
 
           // Check if data is already present
-          if (useGameStore.getState().currentTurn && useUserRoomStore.getState().currentRound) {
+          if (
+            useGameStore.getState().currentTurn &&
+            useUserRoomStore.getState().currentRound
+          ) {
             clearTimeout(timeoutId);
             // No need to unsubscribe if we haven't subscribed yet for this specific check
             resolve();
             return; // Exit if data is already there
           }
 
-          const unsubscribeGameStore = useGameStore.subscribe(
-            (state) => state.currentTurn,
-            (newTurn) => {
-              // Check currentRound directly from the store's state
-              const currentRound = useUserRoomStore.getState().currentRound;
-              if (newTurn && currentRound) {
-                clearTimeout(timeoutId);
-                unsubscribeGameStore(); 
-                resolve();
-              }
+          const unsubscribeGameStore = useGameStore.subscribe((state) => {
+            const newTurn = state.currentTurn;
+            // Check currentRound directly from the store's state
+            const currentRound = useUserRoomStore.getState().currentRound;
+            if (newTurn && currentRound) {
+              clearTimeout(timeoutId);
+              unsubscribeGameStore();
+              resolve();
             }
-          );
-          
+            return newTurn;
+          });
+
           // Initial check again in case it populated between the first check and subscription setup
           // This is a bit redundant due to the subscribe model but can catch very fast updates
-          if (useGameStore.getState().currentTurn && useUserRoomStore.getState().currentRound) {
+          if (
+            useGameStore.getState().currentTurn &&
+            useUserRoomStore.getState().currentRound
+          ) {
             clearTimeout(timeoutId);
             unsubscribeGameStore(); // Ensure cleanup if it resolves here
             resolve();

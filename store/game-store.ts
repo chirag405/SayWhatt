@@ -58,7 +58,8 @@ interface GameStoreState {
   processAIResponses: (turnId: string) => Promise<boolean>;
   submitVote: (
     answerId: string,
-    voterId: string
+    voterId: string,
+    voteType?: "up" | "down"
   ) => Promise<{ success: boolean }>;
   nextTurn: (turnId: string) => Promise<{ gameEnded: boolean }>;
   processAfterVoting: (roomId: string) => Promise<boolean>;
@@ -699,10 +700,9 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
       set({ isProcessingAI: false });
     }
   },
-
-  submitVote: async (answerId, voterId) => {
+  submitVote: async (answerId, voterId, voteType = "up") => {
     try {
-      const data = await actions.submitVote(answerId, voterId);
+      const data = await actions.submitVote(answerId, voterId, voteType);
 
       // Update local state with the new vote
       if (data && data.length > 0) {

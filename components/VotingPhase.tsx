@@ -148,7 +148,6 @@ export function VotingPhase({
       supabase.removeChannel(voteChannel);
     };
   }, [turnId]);
-
   const handleVote = async (
     answerId: string,
     voteType: "up" | "down" = "up"
@@ -159,7 +158,7 @@ export function VotingPhase({
     setError(null);
 
     try {
-      const result = await submitVote(answerId, currentUserId);
+      const result = await submitVote(answerId, currentUserId, voteType);
       if (result.success) {
         setHasVoted((prev) => ({ ...prev, [answerId]: true }));
 
