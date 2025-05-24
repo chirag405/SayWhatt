@@ -15,7 +15,7 @@ import {
 } from "@/types/types";
 
 import { GoogleGenAI } from "@google/genai";
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY }); // Commenting out old initialization
 export async function startGame(roomId: string, userId: string) {
   const supabase = await createClient();
 
@@ -488,8 +488,6 @@ You are ToxicTinderBot, a savage AI with zero chill and a PhD in shade. Your vib
 3. Throw in some dumb insults, but keep it just reasonable enough to make sense.
 4. Stay hilarious, maybe a tad abusive, but don’t go full sociopath.
 
-Respond with:
-Score: X, Feedback: Y
 `,
 
     "Hilarious Chaos": `
@@ -498,9 +496,6 @@ You’re YeetLord420, the ultimate chaos gremlin spawned from cursed memes and 3
 2. Roast the player’s answer with dank humor—think unfiltered Reddit thread energy.
 3. Be dumb, savage, and slightly unhinged, but keep it grounded in the scenario.
 4. Sprinkle in some spicy insults for flavor.
-
-Respond with:
-Score: X, Feedback: Y
 `,
 
     "Life-or-Death Dilemmas": `
@@ -509,9 +504,6 @@ You’re GrimReaperLad, a melodramatic AI who treats every choice like it’s a 
 2. Praise epic moves or clown the player for being a total coward—use dank, dumb jabs.
 3. Keep the feedback wild, a bit abusive, but tied to the context.
 4. Make it sound like the world’s ending, but in a hilarious way.
-
-Respond with:
-Score: X, Feedback: Y
 `,
 
     "Embarrassing Moments": `
@@ -520,39 +512,67 @@ You’re CringeKing69, the god of awkwardness with a black belt in roasting trai
 2. Deliver feedback with short, savage burns—dank, dumb, and a smidge mean.
 3. Stay just reasonable enough to tie back to the scenario, but lean into the chaos.
 4. Make the player feel like they tripped in front of the whole internet.
-
-Respond with:
-Score: X, Feedback: Y
 `,
   };
 
-  const systemPrompt =
+  const baseInstructions = `
+Your persona-specific instructions are above. Now, follow these general rules for your response:
+
+Scoring Guidelines (0-7 points):
+- 0-1 points: Answer is completely irrelevant, nonsensical, off-topic, or just keyboard smash.
+- 2-3 points: Answer is barely relevant, very simplistic, or shows extremely minimal effort.
+- 4-5 points: Answer is relevant to the scenario, makes sense, and shows reasonable effort or some creativity.
+- 6-7 points: Answer is highly relevant, clever, insightful, creative, and well-expressed.
+
+Feedback Guidelines:
+- Length: Approximately 3-5 lines.
+- Language: Simple, everyday words. Avoid jargon or overly complex vocabulary.
+- Tone: Maintain your given persona.
+
+Output Format:
+You MUST respond *only* in the following format, with no text before or after:
+Score: [Your Score Here]
+Feedback: [Your Feedback Here]
+`;
+
+  const specificPersonaPrompt =
     systemPrompts[turnDetails.category] || systemPrompts["Hilarious Chaos"];
+  
+  // Initialize the AI model (new pattern)
+  const genAI = new GoogleGenAI(process.env.GEMINI_API_KEY || "");
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
   for (const answer of answers || []) {
     try {
       const prompt = `
-${systemPrompt}
+${specificPersonaPrompt}
+${baseInstructions}
 
 Scenario: "${scenario.scenario_text}"
 Context: ${turnDetails.context}
 Answer: "${answer.answer_text}"
 `;
 
-      const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-      });
+      // Old SDK usage:
+      // const response = await ai.models.generateContent({
+      //   model: "gemini-2.0-flash", // Old model name
+      //   contents: [{ role: "user", parts: [{ text: prompt }] }],
+      // });
+      // const text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
-      const text = response.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      // New SDK usage:
+      const result = await model.generateContent(prompt);
+      const response = result.response;
+      const text = response.text();
+      
       console.log("Raw AI Response for answer ID", answer.id, ":", text);
 
       const scoreMatch = text.match(/Score:\s*(\d+)/);
-      const feedbackMatch = text.match(/Feedback:\s*(.+)/);
+      const feedbackMatch = text.match(/Feedback:\s*(.+)/s); // Added 's' flag for multiline feedback
 
-      const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 5;
-      const feedback = feedbackMatch?.[1] || "No feedback provided";
-      const ai_points = Math.min(10, Math.max(1, score));
+      const score = scoreMatch ? parseInt(scoreMatch[1], 10) : 0; // Default to 0
+      const feedback = feedbackMatch?.[1]?.trim() || "No feedback provided."; // Trim feedback and default
+      const ai_points = Math.min(7, Math.max(0, score)); // Clamp 0-7
       console.log("Parsed Score:", score, "Parsed Feedback:", `"${feedback}"`, "AI Points to save:", ai_points, "for answer ID", answer.id);
 
       const { data: updatedAnswerData, error: updateError } = await supabase
@@ -582,7 +602,7 @@ Answer: "${answer.answer_text}"
         .from("answers")
         .update({
           ai_response: "Error processing response",
-          ai_points: 5,
+          ai_points: 0, // Set to 0 on error
         })
         .eq("id", answer.id)
         .select();
