@@ -389,29 +389,82 @@ export default function GameScreen() {
     const cleanupFunctions: (() => void)[] = [];
 
     const initGame = async () => {
-      if (!mounted) return;
+      console.log("[GameScreen] initGame started.");
+      if (!mounted) {
+        console.log("[GameScreen] initGame: Component not mounted, exiting.");
+        return;
+      }
       setIsLoading(true);
+      setError(null); // Reset error state at the beginning
 
       try {
+        console.log("[GameScreen] initGame: Fetching room by ID...", roomId);
         const roomResult = await fetchRoomById(roomId);
-        if (!roomResult.success)
-          throw new Error(roomResult.error || "Failed to fetch room");
-        if (!mounted) return;
+        if (!mounted) { console.log("[GameScreen] initGame: Component unmounted after fetchRoomById."); return; }
+        if (!roomResult.success || !roomResult.room) {
+          console.error("[GameScreen] initGame: Failed to fetch room:", roomResult.error);
+          throw new Error(roomResult.error || "Failed to fetch room details.");
+        }
+        console.log("[GameScreen] initGame: Fetched room by ID successfully.", roomResult.room.id);
 
-        await fetchPlayersInRoom(roomId);
-        cleanupFunctions.push(
-          subscribeToRoom(roomId),
-          subscribeToPlayers(roomId),
-          subscribeToGame(roomId),
-          subscribeToRounds(roomId)
-        );
-        setSubscriptionsActive((prev) => ({ ...prev, main: true }));
-        setIsLoading(false);
-        setTimeout(() => mounted && setAnimationComplete(true), 1000);
-      } catch (err) {
-        console.error("[GameScreen] Error initializing game:", err);
-        if (mounted) setError("Failed to load game. Please try again.");
-        setIsLoading(false);
+        console.log("[GameScreen] initGame: Fetching players in room...", roomId);
+        const playersResult = await fetchPlayersInRoom(roomId);
+        if (!mounted) { console.log("[GameScreen] initGame: Component unmounted after fetchPlayersInRoom."); return; }
+        if (!playersResult.success) {
+          console.error("[GameScreen] initGame: Failed to fetch players:", playersResult.error);
+          throw new Error(playersResult.error || "Failed to fetch players.");
+        }
+        console.log("[GameScreen] initGame: Fetched players in room successfully.", playersResult.players?.length);
+        
+        console.log("[GameScreen] initGame: Setting up subscriptions for room:", roomId);
+        // Order of subscriptions might matter based on how stores initialize/depend on each other.
+        // user-room-store subscriptions first, then game-store.
+        
+        console.log("[GameScreen] initGame: Subscribing to Room...");
+        cleanupFunctions.push(subscribeToRoom(roomId));
+        console.log("[GameScreen] initGame: Subscribed to Room.");
+
+        console.log("[GameScreen] initGame: Subscribing to Players...");
+        cleanupFunctions.push(subscribeToPlayers(roomId));
+        console.log("[GameScreen] initGame: Subscribed to Players.");
+        
+        // currentGame might be null initially until user-room-store syncs with game-store.
+        // It's safer to ensure game-store subscriptions are robust enough to handle this,
+        // or are initiated after the first sync. Given current structure, subscribeToGame handles this.
+        console.log("[GameScreen] initGame: Subscribing to Game (main game state, rounds)...");
+        cleanupFunctions.push(subscribeToGame(roomId));
+        console.log("[GameScreen] initGame: Subscribed to Game.");
+
+        // subscribeToRounds is deprecated in user-room-store, and game-store's subscribeToGame handles rounds/turns.
+        // If it's still needed from user-room-store for some reason, it should be verified.
+        // For now, assuming it's not critical for the initial load sequence if game-store handles it.
+        // console.log("[GameScreen] initGame: Subscribing to Rounds (user-room-store)...");
+        // cleanupFunctions.push(subscribeToRounds(roomId)); 
+        // console.log("[GameScreen] initGame: Subscribed to Rounds (user-room-store).");
+        
+        setSubscriptionsActive((prev) => ({ ...prev, main: true })); // May need more granular control if issues persist
+        
+        console.log("[GameScreen] initGame: All initial fetches and subscriptions set up successfully.");
+        if (mounted) {
+          setIsLoading(false);
+          // Delay animation complete slightly to allow UI to settle after loading.
+          setTimeout(() => {
+            if (mounted) setAnimationComplete(true);
+            console.log("[GameScreen] initGame: Animation complete timeout executed.");
+          }, 100); 
+        }
+      } catch (err: any) {
+        console.error("[GameScreen] initGame: Catch block error:", err.message, err.stack);
+        if (mounted) {
+          setError("Failed to initialize game components. Please check your connection and try again.");
+          setIsLoading(false);
+        }
+      } finally {
+        console.log("[GameScreen] initGame: Finally block. isLoading:", get().isLoading, "mounted:", mounted);
+        if (mounted && get().isLoading) { // Ensure isLoading is false if initGame finishes, even if an unhandled case occurs.
+          setIsLoading(false);
+          console.log("[GameScreen] initGame: isLoading forcibly set to false in finally block.");
+        }
       }
     };
 

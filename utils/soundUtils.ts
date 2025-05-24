@@ -30,9 +30,6 @@ const soundInstances: Record<string, Howl> = {};
 // Tracks which sounds should be looping
 const loopingSounds: Set<string> = new Set();
 
-// Flag to track if lobby music is playing - add this to prevent multiple instances
-let lobbyMusicInitialized = false;
-
 // Sound settings stored in localStorage
 export interface SoundSettings {
   masterVolume: number;
@@ -136,38 +133,31 @@ export function updateSoundSettings(
 
 // Apply category settings to currently playing sounds
 function applyCategorySettings(settings: SoundSettings): void {
-  // Handle lobby music - special case as it should keep playing in background
-  const lobbyKey = Object.keys(SOUND_PATHS).find(
-    (key) => SOUND_PATHS[key as keyof typeof SOUND_PATHS] === SOUND_PATHS.lobby
-  );
+  const lobbyKey = "lobby"; // Assuming 'lobby' is the key for lobby music in SOUND_PATHS
 
-  if (lobbyKey && soundInstances[lobbyKey]) {
-    // If lobby category enabled but not playing, start it
-    if (settings.categories.lobby && !soundInstances[lobbyKey].playing()) {
-      console.log("Starting lobby music because category was enabled");
-      soundInstances[lobbyKey].volume(settings.masterVolume);
-      soundInstances[lobbyKey].loop(true); // Ensure looping is set
+  if (soundInstances[lobbyKey]) {
+    soundInstances[lobbyKey].volume(settings.masterVolume); // Always update volume
 
-      // Mark as looping sound
-      if (!loopingSounds.has(lobbyKey)) {
-        loopingSounds.add(lobbyKey);
-      }
-
-      // Play after a slight delay to avoid audio context issues
-      setTimeout(() => {
+    if (settings.categories.lobby) {
+      if (!soundInstances[lobbyKey].playing()) {
+        console.log("[applyCategorySettings] Lobby category enabled, playing lobby music.");
         soundInstances[lobbyKey].play();
-      }, 50);
+      } else {
+        console.log("[applyCategorySettings] Lobby music already playing and category enabled.");
+      }
+    } else {
+      if (soundInstances[lobbyKey].playing()) {
+        console.log("[applyCategorySettings] Lobby category disabled, pausing lobby music.");
+        soundInstances[lobbyKey].pause();
+      } else {
+        console.log("[applyCategorySettings] Lobby music already paused and category disabled.");
+      }
     }
-    // If lobby disabled and playing, stop it
-    else if (!settings.categories.lobby && soundInstances[lobbyKey].playing()) {
-      console.log("Stopping lobby music because lobby category is disabled");
-      // Important: Only pause the music, don't destroy the instance
-      // This ensures we can resume the same instance later
-      soundInstances[lobbyKey].pause();
-    }
+  } else {
+    console.warn("[applyCategorySettings] Lobby music instance not found. Was preloadSounds called?");
   }
 
-  // Loop through all sound instances and manage them based on categories
+  // Loop through all sound instances and manage them based on categories (excluding lobby)
   Object.entries(SOUND_PATHS).forEach(([key, path]) => {
     if (!soundInstances[key] || key === "lobby") return; // Skip lobby as we handled it separately
 
@@ -197,27 +187,32 @@ function applyCategorySettings(settings: SoundSettings): void {
 
 // Preload all sounds to avoid delays
 export function preloadSounds(): void {
+  console.log("[preloadSounds] Preloading all sounds.");
   Object.entries(SOUND_PATHS).forEach(([key, path]) => {
     const settings = getSoundSettings();
-    // Determine if this sound should loop (only lobby music loops)
-    const shouldLoop = key === "lobby";
+    const isLobbySound = path === SOUND_PATHS.lobby;
 
-    // Apply volume adjustments for specific sounds
     let initialVolume = settings.masterVolume;
-    if (key === "resultsReveal") {
-      initialVolume = settings.masterVolume * 0.5;
+    if (key === "resultsReveal") { // Assuming 'resultsReveal' is the key
+      initialVolume = settings.masterVolume * 0.5; // Specific adjustment for resultsReveal
+    }
+
+    if (soundInstances[key]) {
+      console.warn(`[preloadSounds] Sound instance for ${key} already exists. Skipping creation.`);
+      return;
     }
 
     soundInstances[key] = new Howl({
       src: [path],
       preload: true,
       volume: initialVolume,
-      loop: shouldLoop,
+      loop: isLobbySound, // Only lobby music loops by default
+      html5: isLobbySound, // Use HTML5 audio for lobby music to potentially improve background play
     });
 
-    // Keep track of looping sounds
-    if (shouldLoop) {
-      loopingSounds.add(key);
+    if (isLobbySound) {
+      console.log(`[preloadSounds] Lobby music instance created: ${key}`);
+      loopingSounds.add(key); // Keep track of lobby music for looping logic if needed elsewhere
     }
   });
 }
@@ -331,12 +326,6 @@ export function stopSound(path: string, keepLobbyMusic: boolean = true): void {
   if (key && soundInstances[key]) {
     soundInstances[key].stop();
 
-    // Reset lobby initialized flag when stopping lobby music
-    if (path === SOUND_PATHS.lobby) {
-      lobbyMusicInitialized = false;
-      console.log("Reset lobby music initialized flag");
-    }
-
     // Remove from looping sounds if it was looping
     if (loopingSounds.has(key)) {
       loopingSounds.delete(key);
@@ -360,20 +349,8 @@ export function stopAllSounds(keepLobbyMusic: boolean = true): void {
     if (sound.playing()) {
       sound.stop();
       console.log(`Stopped sound: ${key}`);
-
-      // If this is lobby music that we're stopping, reset the initialization flag
-      if (isLobbyMusic) {
-        lobbyMusicInitialized = false;
-        console.log("Lobby music stopped completely");
-      }
     }
   });
-
-  // Only reset lobby music initialized flag if we're stopping it too
-  if (!keepLobbyMusic) {
-    lobbyMusicInitialized = false;
-    console.log("Reset lobby music initialized flag (all sounds stopped)");
-  }
 
   // Keep looping sounds for lobby if keeping lobby music
   if (keepLobbyMusic) {
@@ -416,94 +393,33 @@ export function updateAllVolumes(masterVolume: number): void {
 export function checkAndStartLobbyMusic(): void {
   if (typeof window === "undefined") return;
   const settings = getSoundSettings();
+  const lobbyKey = "lobby"; // Assuming 'lobby' is the key for lobby music in SOUND_PATHS
 
-  const lobbyKey = Object.keys(SOUND_PATHS).find(
-    (key) => SOUND_PATHS[key as keyof typeof SOUND_PATHS] === SOUND_PATHS.lobby
-  );
+  console.log(`[checkAndStartLobbyMusic] Attempting to start lobby music. Category enabled: ${settings.categories.lobby}`);
 
-  if (!lobbyKey) {
-    console.error("Lobby sound key not found");
+  if (!soundInstances[lobbyKey]) {
+    console.error("[checkAndStartLobbyMusic] Lobby music instance not found. Ensure preloadSounds() is called first.");
+    // Optionally, attempt to preload it here as a fallback, though ideally it should be preloaded.
+    // preloadSounds(); // This might be too aggressive or cause issues if called out of sequence.
     return;
   }
 
-  // If lobby sounds are disabled in settings
-  if (!settings.categories.lobby) {
-    console.log("Lobby sounds are disabled in settings.");
-    if (soundInstances[lobbyKey] && soundInstances[lobbyKey].playing()) {
-      console.log("Pausing lobby music because category is disabled.");
-      soundInstances[lobbyKey].pause();
-      lobbyMusicInitialized = false; // Mark as not initialized since it's paused by setting
-    }
-    return;
-  }
+  soundInstances[lobbyKey].volume(settings.masterVolume); // Ensure volume is up-to-date
 
-  // Lobby sounds are enabled in settings, proceed to play or create.
-
-  // If we already have an instance of lobby music
-  if (soundInstances[lobbyKey]) {
-    // Instance exists
-    soundInstances[lobbyKey].loop(true); // Ensure loop is true
-    soundInstances[lobbyKey].volume(settings.masterVolume); // Ensure volume is current
-
+  if (settings.categories.lobby) {
     if (!soundInstances[lobbyKey].playing()) {
-      console.log("Lobby instance exists, playing it now.");
+      console.log("[checkAndStartLobbyMusic] Lobby category enabled. Playing lobby music.");
       soundInstances[lobbyKey].play();
     } else {
-      console.log("Lobby music already playing and instance exists.");
+      console.log("[checkAndStartLobbyMusic] Lobby music already playing and category enabled.");
     }
-    lobbyMusicInitialized = true;
   } else {
-    // Instance does not exist, create it
-    console.log("Creating new lobby sound instance.");
-    soundInstances[lobbyKey] = new Howl({
-      src: [SOUND_PATHS.lobby],
-      volume: settings.masterVolume,
-      loop: true,
-      html5: true,
-      preload: true, // Preload true is good
-    });
-    loopingSounds.add(lobbyKey); // Manage looping sounds
-
-    soundInstances[lobbyKey].once("load", () => {
-      console.log("Lobby sound loaded, playing now.");
-      if (settings.categories.lobby) {
-        // Re-check settings before playing after load
-        soundInstances[lobbyKey].play();
-        lobbyMusicInitialized = true;
-      } else {
-        console.log(
-          "Lobby category got disabled while sound was loading. Not playing."
-        );
-        lobbyMusicInitialized = false;
-      }
-    });
-
-    soundInstances[lobbyKey].on("loaderror", (id, err) => {
-      console.error("Error loading lobby music:", err);
-      lobbyMusicInitialized = false;
-    });
-
-    soundInstances[lobbyKey].on("playerror", (id, err) => {
-      console.error("Error playing lobby music:", err);
-      lobbyMusicInitialized = false;
-      // Attempt to play again after a short delay if context was locked
-      if (Howler.ctx && Howler.ctx.state === "suspended") {
-        console.log(
-          "Audio context suspended, attempting to resume for lobby music."
-        );
-        Howler.ctx.resume().then(() => {
-          if (
-            settings.categories.lobby &&
-            soundInstances[lobbyKey] &&
-            !soundInstances[lobbyKey].playing()
-          ) {
-            console.log("Resuming lobby music play after context unlock.");
-            soundInstances[lobbyKey].play();
-            lobbyMusicInitialized = true;
-          }
-        });
-      }
-    });
+    if (soundInstances[lobbyKey].playing()) {
+      console.log("[checkAndStartLobbyMusic] Lobby category disabled. Pausing lobby music.");
+      soundInstances[lobbyKey].pause();
+    } else {
+      console.log("[checkAndStartLobbyMusic] Lobby music already paused and category disabled.");
+    }
   }
 }
 

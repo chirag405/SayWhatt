@@ -54,7 +54,8 @@ interface GameStoreState {
     turnId: string,
     playerId: string
   ) => Promise<any>;
-  syncWithUserRoomStore: (roomId: string) => void;
+  // Signature changed: Now accepts Room and Player[] directly
+  syncWithUserRoomStore: (room: Room | null, players: Player[]) => void; 
   processAIResponses: (turnId: string) => Promise<boolean>;
   submitVote: (
     answerId: string,
@@ -80,196 +81,251 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   timerEnd: null,
   isProcessingAI: false,
   disconnectedPlayers: [],
+  _answersSubscription: null as any, // Using 'any' for Supabase RealtimeChannel type
+  _votesSubscription: null as any,
+  _scenariosSubscription: null as any,
 
   subscribeToGame: (roomId) => {
     const supabase = createClient();
+    let turnsSubscription: any = null; // To store the turns subscription
 
-    const fetchAndUpdateGame = async () => {
-      console.log("Fetching game data for room:", roomId);
-
-      // Fetch room
-      const { data: room, error: roomError } = await supabase
-        .from("rooms")
-        .select("*")
-        .eq("id", roomId)
-        .single();
-
-      if (roomError || !room) {
-        console.error("Room fetch error:", roomError);
-        return;
+    // This function is now streamlined:
+    // - It relies on `currentGame.room` and `currentGame.players` being up-to-date from `syncWithUserRoomStore`.
+    // - It primarily fetches rounds for the room and then turns for the current round.
+    const fetchGameAndRoundData = async () => {
+      console.log(`[game-store] fetchGameAndRoundData for room: ${roomId}`);
+      const currentRoomState = get().currentGame?.room;
+      if (!currentRoomState || currentRoomState.id !== roomId) {
+        console.warn(`[game-store] fetchGameAndRoundData: Room ID mismatch or no current room. Expected ${roomId}, got ${currentRoomState?.id}`);
+        return null; // Or handle appropriately
       }
 
-      // Fetch rounds
-      const { data: rounds, error: roundsError } = await supabase
-        .from("rounds")
-        .select("*")
-        .eq("room_id", roomId)
-        .order("round_number");
-
-      if (roundsError) {
-        console.error("Rounds fetch error:", roundsError);
-        return;
-      }
-
-      // Fetch players
-      const { data: players, error: playersError } = await supabase
-        .from("players")
-        .select("*")
-        .eq("room_id", roomId)
-        .order("total_points", { ascending: false });
-
-      if (playersError) console.error("Players fetch error:", playersError);
-
-      // Fetch current turn if available
-      const currentRound = rounds.find(
-        (r) => r.round_number === room.current_round
-      );
-      let turns: Turn[] = [];
-
-      if (currentRound) {
-        const { data: turnsData } = await supabase
-          .from("turns")
+      try {
+        // Fetch rounds for the current room
+        const { data: roundsData, error: roundsError } = await supabase
+          .from("rounds")
           .select("*")
-          .eq("round_id", currentRound.id)
-          .order("turn_number");
+          .eq("room_id", roomId)
+          .order("round_number");
 
-        turns = turnsData || [];
-
-        // Find current turn
-        const currentTurn = turns.find(
-          (t) => t.turn_number === room.current_turn
-        );
-        if (currentTurn) {
-          set({ currentTurn });
+        if (roundsError) {
+          console.error(`[game-store] Error fetching rounds for room ${roomId}:`, roundsError);
+          throw roundsError;
         }
+        
+        const rounds = roundsData || [];
+        let currentRound: Round | undefined = rounds.find(r => r.round_number === currentRoomState.current_round);
+        let turns: Turn[] = [];
+        let fetchedCurrentTurn: Turn | null = null;
+
+        if (currentRound) {
+          console.log(`[game-store] Current round for room ${roomId} is ${currentRound.id}, number ${currentRound.round_number}`);
+          const { data: turnsData, error: turnsError } = await supabase
+            .from("turns")
+            .select("*")
+            .eq("round_id", currentRound.id)
+            .order("turn_number");
+
+          if (turnsError) {
+            console.error(`[game-store] Error fetching turns for round ${currentRound.id}:`, turnsError);
+            // Continue without turns for this round, or throw
+          } else {
+            turns = turnsData || [];
+            if (currentRoomState.current_turn) {
+              fetchedCurrentTurn = turns.find(t => t.turn_number === currentRoomState.current_turn) || null;
+            }
+          }
+        } else {
+          console.log(`[game-store] No current round found for room ${roomId} based on room.current_round: ${currentRoomState.current_round}`);
+        }
+        
+        set((state) => {
+          if (!state.currentGame) { // Should not happen if currentRoomState is valid
+             console.error("[game-store] fetchGameAndRoundData: currentGame became null unexpectedly.");
+             return state;
+          }
+          return {
+            ...state,
+            currentGame: {
+              ...state.currentGame,
+              rounds: rounds.map(r => ({ ...r, status: r.status as TurnStatus })),
+              turns: turns,
+            },
+            currentTurn: fetchedCurrentTurn || state.currentTurn, // Update currentTurn based on fetched data
+          };
+        });
+        
+        // After updating rounds and current turn, ensure turn-specific subscriptions are correct.
+        if (fetchedCurrentTurn?.id && fetchedCurrentTurn.id !== get().currentTurn?.id) {
+           // If the current turn changed, (re)subscribe to its answers, votes, scenarios
+           get().subscribeToAnswers(fetchedCurrentTurn.id);
+           get().subscribeToVotes(fetchedCurrentTurn.id);
+           get().subscribeToScenarios(fetchedCurrentTurn.id); // Assuming this is also turn-specific
+        }
+        return currentRound?.id || null; // Return current round ID for turn subscription management
+      } catch (error) {
+        console.error(`[game-store] Exception in fetchGameAndRoundData for room ${roomId}:`, error);
+        return null;
+      }
+    };
+    
+    // Setup Turn Subscription Logic (to be called when currentRoundId changes)
+    const setupTurnSpecificSubscription = (currentRoundId: string | null) => {
+      console.log(`[game-store] setupTurnSpecificSubscription called for round: ${currentRoundId}`);
+      if (turnsSubscription) {
+        console.log(`[game-store] Removing previous turns subscription.`);
+        turnsSubscription.unsubscribe();
+        turnsSubscription = null;
       }
 
-      // Update state
-      set({
-        currentGame: {
-          room,
-          rounds: rounds.map((round) => ({
-            ...round,
-            status: round.status as TurnStatus,
-          })),
-          players: players || [],
-          turns,
-        },
-      });
-
-      // Return the round IDs for subscription use
-      return rounds.map((r) => r.id);
-    };
-
-    // Initial fetch and get round IDs
-    let roundIds: string[] = [];
-    fetchAndUpdateGame().then((ids) => {
-      if (ids) roundIds = ids;
-    });
-
-    // Subscription setup
-    const channel = supabase
-      .channel(`game:${roomId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "rooms",
-          filter: `id=eq.${roomId}`,
-        },
-        async () => {
-          const ids = await fetchAndUpdateGame();
-          if (ids) roundIds = ids;
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "players",
-          filter: `room_id=eq.${roomId}`,
-        },
-        fetchAndUpdateGame
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "rounds",
-          filter: `room_id=eq.${roomId}`,
-        },
-        async () => {
-          const ids = await fetchAndUpdateGame();
-          if (ids) roundIds = ids;
-        }
-      );
-
-    // Subscribe to the channel first
-    channel.subscribe();
-
-    // Handle turn changes separately with correct round IDs
-    const setupTurnSubscription = () => {
-      if (roundIds.length === 0) {
-        // Wait and retry if round IDs aren't available yet
-        setTimeout(setupTurnSubscription, 1000);
+      if (!currentRoundId) {
+        console.log(`[game-store] No current round ID, skipping turns subscription.`);
+        set({ currentTurn: null, answers: [], votes: [], currentScenario: null }); // Clear turn-specific data
         return;
       }
 
-      const roundIdsFilter = roundIds.map((id) => `'${id}'`).join(",");
-
-      const turnChannel = supabase
-        .channel(`game-turns:${roomId}`)
+      console.log(`[game-store] Setting up new turns subscription for round: ${currentRoundId}`);
+      turnsSubscription = supabase
+        .channel(`game-store-turns-${currentRoundId}`)
         .on(
           "postgres_changes",
           {
             event: "*",
             schema: "public",
             table: "turns",
-            filter: `round_id=in.(${roundIdsFilter})`,
+            filter: `round_id=eq.${currentRoundId}`,
           },
           async (payload) => {
+            console.log(`[game-store] Turn change for round ${currentRoundId}:`, payload.eventType, payload.new);
             const newTurn = payload.new as Turn;
+            const oldTurn = payload.old as Turn; // For DELETE
+            
+            set((state) => {
+              if (!state.currentGame) return state;
+              let updatedTurns = [...state.currentGame.turns];
+              let newCurrentTurnState: Turn | null = state.currentTurn;
 
-            // Update currentTurn
-            set({ currentTurn: newTurn });
-
-            // If turn has a scenario_id, fetch and update current scenario
-            if (newTurn.scenario_id) {
-              try {
-                const scenario = await get().getScenarioById(
-                  newTurn.scenario_id
-                );
-                set({ currentScenario: scenario });
-              } catch (error) {
-                console.error("Failed to fetch scenario:", error);
+              switch (payload.eventType) {
+                case "INSERT":
+                  if (!updatedTurns.find(t => t.id === newTurn.id)) updatedTurns.push(newTurn);
+                  // Check if this new turn is now the current turn based on room's current_turn pointer
+                  if (state.currentGame.room.current_turn === newTurn.turn_number) {
+                    newCurrentTurnState = newTurn;
+                  }
+                  break;
+                case "UPDATE":
+                  updatedTurns = updatedTurns.map(t => t.id === newTurn.id ? newTurn : t);
+                  if (state.currentTurn?.id === newTurn.id) {
+                    newCurrentTurnState = newTurn;
+                  }
+                  break;
+                case "DELETE":
+                  updatedTurns = updatedTurns.filter(t => t.id !== oldTurn.id);
+                  if (state.currentTurn?.id === oldTurn.id) {
+                    newCurrentTurnState = null; // Current turn was deleted
+                  }
+                  break;
               }
-            }
-
-            // Refresh overall game state
-            fetchAndUpdateGame();
+              
+              // If currentTurn changed, update scenario and other turn-specific data/subscriptions
+              if (newCurrentTurnState?.id !== state.currentTurn?.id) {
+                if (newCurrentTurnState?.scenario_id) {
+                  get().getScenarioById(newCurrentTurnState.scenario_id).then(scenario => set({ currentScenario: scenario }));
+                } else {
+                  set({ currentScenario: null });
+                }
+                // Re-subscribe to answers/votes for the new turn
+                if (newCurrentTurnState) {
+                  get().subscribeToAnswers(newCurrentTurnState.id);
+                  get().subscribeToVotes(newCurrentTurnState.id);
+                  get().subscribeToScenarios(newCurrentTurnState.id);
+                } else {
+                  // Clear answers/votes if no current turn
+                  set({ answers: [], votes: []});
+                }
+              }
+              
+              return {
+                ...state,
+                currentGame: { ...state.currentGame, turns: updatedTurns },
+                currentTurn: newCurrentTurnState,
+              };
+            });
           }
         )
-        .subscribe();
-
-      return turnChannel;
+        .subscribe((status, err) => {
+          if (err) console.error(`[game-store] Turns subscription error for round ${currentRoundId}:`, err.message);
+          else console.log(`[game-store] Turns subscription status for round ${currentRoundId}: ${status}`);
+        });
     };
 
-    const turnChannel = setupTurnSubscription();
+    // Initial fetch and setup subscriptions
+    fetchGameAndRoundData().then(currentRoundId => {
+      setupTurnSpecificSubscription(currentRoundId);
+    });
 
-    // Return cleanup function
+    // Main channel for room and rounds updates
+    const mainChannel = supabase
+      .channel(`game-store-main-${roomId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rooms", filter: `id=eq.${roomId}` },
+        async (payload) => {
+          console.log(`[game-store] Room change detected (via game-store sub):`, payload.eventType);
+          // Room data itself is synced by user-room-store. Here we react to potential changes
+          // in current_round or current_turn pointers.
+          const newRoundId = await fetchGameAndRoundData();
+          const currentSubscribedRoundId = turnsSubscription?.topic.split('-').pop(); // hacky way to get roundId from channel topic
+          if (newRoundId !== currentSubscribedRoundId) {
+            setupTurnSpecificSubscription(newRoundId);
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "rounds", filter: `room_id=eq.${roomId}` },
+        async (payload) => {
+          console.log(`[game-store] Rounds change detected for room ${roomId}:`, payload.eventType);
+          const newRoundId = await fetchGameAndRoundData();
+          const currentSubscribedRoundId = turnsSubscription?.topic.split('-').pop();
+          if (newRoundId !== currentSubscribedRoundId) {
+             setupTurnSpecificSubscription(newRoundId);
+          }
+        }
+      )
+      .subscribe((status, err) => {
+        if (err) console.error(`[game-store] Main channel subscription error for room ${roomId}:`, err.message);
+        else console.log(`[game-store] Main channel subscription status for room ${roomId}: ${status}`);
+      });
+
     return () => {
-      supabase.removeChannel(channel);
-      if (turnChannel) supabase.removeChannel(turnChannel);
+      console.log(`[game-store] Unsubscribing from game for room: ${roomId}`);
+      supabase.removeChannel(mainChannel);
+      if (turnsSubscription) {
+        turnsSubscription.unsubscribe();
+      }
     };
   },
 
   subscribeToAnswers: (turnId) => {
     const supabase = createClient();
-    const subscription = supabase
-      .channel(`answers:${turnId}`)
+    console.log(`[game-store] Attempting to subscribe to answers for turn: ${turnId}`);
+
+    // Unsubscribe from previous if exists
+    if (get()._answersSubscription) {
+      console.log(`[game-store] Unsubscribing from previous answers subscription for turn: ${get().currentTurn?.id}`);
+      get()._answersSubscription.unsubscribe();
+      set({ _answersSubscription: null, answers: [] }); // Clear answers when turn changes
+    }
+
+    if (!turnId) {
+      console.warn("[game-store] subscribeToAnswers: turnId is invalid. Skipping subscription.");
+      return () => {};
+    }
+
+    console.log(`[game-store] Subscribing to answers for turn: ${turnId}`);
+    const newSubscription = supabase
+      .channel(`answers-${turnId}`) // Unique channel name per turn
       .on(
         "postgres_changes",
         {
@@ -279,13 +335,15 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
           filter: `turn_id=eq.${turnId}`,
         },
         (payload) => {
+          console.log(`[game-store] Answers change for turn ${turnId}:`, payload.eventType);
           set((state) => {
             let newAnswers = [...state.answers];
             const newAnswer = payload.new as Answer;
+            const oldAnswerId = payload.old?.id;
 
             switch (payload.eventType) {
               case "INSERT":
-                newAnswers.push(newAnswer);
+                if (!newAnswers.find(a => a.id === newAnswer.id)) newAnswers.push(newAnswer);
                 break;
               case "UPDATE":
                 newAnswers = newAnswers.map((a) =>
@@ -293,35 +351,58 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
                 );
                 break;
               case "DELETE":
-                newAnswers = newAnswers.filter((a) => a.id !== payload.old.id);
+                if (oldAnswerId) newAnswers = newAnswers.filter((a) => a.id !== oldAnswerId);
                 break;
             }
             return { answers: newAnswers };
           });
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (err) console.error(`[game-store] Answers subscription error for turn ${turnId}:`, err.message);
+        else console.log(`[game-store] Answers subscription status for turn ${turnId}: ${status}`);
+      });
+    
+    set({ _answersSubscription: newSubscription });
 
-    return () => supabase.removeChannel(subscription);
+    return () => {
+      console.log(`[game-store] Unsubscribing from answers for turn: ${turnId}`);
+      newSubscription.unsubscribe();
+      set({ _answersSubscription: null, answers: [] }); // Clear on explicit unsubscribe too
+    };
   },
   subscribeToVotes: (turnId) => {
     const supabase = createClient();
+    console.log(`[game-store] Attempting to subscribe to votes for turn: ${turnId}`);
 
-    // First get all answer IDs for this turn
-    const fetchVoteSubscription = async () => {
-      const { data: turnAnswers } = await supabase
+    if (get()._votesSubscription) {
+      console.log(`[game-store] Unsubscribing from previous votes subscription for turn: ${get().currentTurn?.id}`);
+      get()._votesSubscription.unsubscribe();
+      set({ _votesSubscription: null, votes: [] }); // Clear votes when turn changes
+    }
+
+    if (!turnId) {
+      console.warn("[game-store] subscribeToVotes: turnId is invalid. Skipping subscription.");
+      return () => {};
+    }
+    
+    const setupSubscriptionForTurn = async () => {
+      console.log(`[game-store] Setting up votes subscription for turn: ${turnId}`);
+      // Fetch answer IDs for the current turn to filter votes, as votes table doesn't have turn_id directly.
+      // This is a simplification; ideally, votes would link to turn_id or this logic would be more robust.
+      const { data: turnAnswers, error: answersError } = await supabase
         .from("answers")
         .select("id")
         .eq("turn_id", turnId);
 
-      if (!turnAnswers || turnAnswers.length === 0) {
-        return () => {}; // No answers to vote on yet
+      if (answersError || !turnAnswers || turnAnswers.length === 0) {
+        console.warn(`[game-store] No answers found for turn ${turnId}, or error fetching them. Votes subscription might be ineffective. Error: ${answersError?.message}`);
+        // Still subscribe to the table, but filtering might not work as expected if no answers.
       }
+      const answerIdsForTurn = new Set((turnAnswers || []).map(a => a.id));
 
-      // Instead of using IN clause with string concatenation, use individual channels
-      // or just listen to all votes and filter client-side
-      const subscription = supabase
-        .channel(`votes:${turnId}`)
+      const newSubscription = supabase
+        .channel(`votes-${turnId}`) // Unique channel name per turn
         .on(
           "postgres_changes",
           {
@@ -400,10 +481,54 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     return () => supabase.removeChannel(subscription);
   },
 
-  subscribeToTurns: (roundId) => {
-    const supabase = createClient();
-    const subscription = supabase
-      .channel(`turns:${roundId}`)
+  // subscribeToTurns will be removed as its logic is integrated into subscribeToGame's turn management
+  subscribeToTurns: (roundId: string) => {
+    console.warn("[game-store] Standalone subscribeToTurns is deprecated and should be removed. Turn subscriptions are handled by subscribeToGame.");
+    // const supabase = createClient();
+    // const subscription = supabase
+    //   .channel(`turns:${roundId}`)
+    //   .on(
+    //     "postgres_changes",
+    //     {
+    //       event: "*", // This listens for all events (INSERT, UPDATE, DELETE)
+    //       schema: "public",
+    //       table: "turns",
+    //       filter: `round_id=eq.${roundId}`,
+    //     },
+    //     async (payload) => {
+    //       console.log("Turn subscription payload:", payload);
+    //       const newTurn = payload.new as Turn;
+    //       console.log("Turn updated:---", newTurn);
+    //       set((state) => ({
+    //         currentTurn: newTurn,
+    //       }));
+    //       if (
+    //         newTurn.status === "selecting_scenario" ||
+    //         newTurn.status === "voting"
+    //       ) {
+    //         const supabase = createClient();
+    //         const { data: answers } = await supabase
+    //           .from("answers")
+    //           .select("*")
+    //           .eq("turn_id", newTurn.id);
+    //         if (answers) {
+    //           set({ answers });
+    //         }
+    //       }
+    //     }
+    //   )
+    //   .subscribe();
+    // console.log(`Subscription to turns:${roundId} created`);
+    // return () => {
+    //   console.log(`Removing subscription for turns:${roundId}`);
+    //   supabase.removeChannel(subscription);
+    // };
+    return () => {
+      console.log(`[game-store] Attempted to unsubscribe from deprecated standalone subscribeToTurns for round ${roundId}.`);
+    };
+  },
+
+  startGame: async (roomId, userId) => {
       .on(
         "postgres_changes",
         {
@@ -454,51 +579,34 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
   },
 
   startGame: async (roomId, userId) => {
+    console.log("[game-store] startGame called for room:", roomId, "user:", userId);
     try {
-      console.log("Starting game for room:", roomId);
-
-      // Use the server action
+      // Call the server action to start the game.
+      // This action should set the room's game_status to 'in_progress'.
       const result = await actions.startGame(roomId, userId);
-      if (!result?.success) throw new Error("Failed to start game");
+      if (!result?.success) {
+        console.error("[game-store] Server action startGame failed:", result?.error);
+        throw new Error(result?.error || "Failed to start game via server action");
+      }
 
-      // Force a direct update to the room status
-      const supabase = createClient();
-      await supabase
-        .from("rooms")
-        .update({ game_status: "in_progress" })
-        .eq("id", roomId);
+      console.log("[game-store] Server action startGame successful for room:", roomId);
+      // user-room-store's subscribeToRoom will detect the room status change to 'in_progress'.
+      // It will then call game-store's syncWithUserRoomStore, updating currentGame.room.
+      // After that, subscribeToGame will be called here to fetch rounds/turns.
 
-      // IMPORTANT: Fetch the updated room data to ensure state is consistent
-      const { data: updatedRoom } = await supabase
-        .from("rooms")
-        .select("*")
-        .eq("id", roomId)
-        .single();
-
-      // Update the local state immediately with the new room status
-      set((state) => ({
-        currentGame: state.currentGame
-          ? {
-              ...state.currentGame,
-              room: updatedRoom,
-            }
-          : null,
-      }));
-
-      console.log(
-        "Game started successfully, room status updated to in_progress"
-      );
-
-      // Initialize subscriptions
+      // Initialize subscriptions for the game.
+      // This will call fetchGameAndRoundData, which relies on currentGame.room being up-to-date.
       get().subscribeToGame(roomId);
-
-      // Explicitly sync with user room store
-      get().syncWithUserRoomStore(roomId);
+      
+      // Note: The direct update to game_status and re-fetch of room data has been removed.
+      // The reactive flow from user-room-store updating game-store is now relied upon.
+      // Also, the incorrect syncWithUserRoomStore(roomId) call was removed.
 
       return true;
-    } catch (error) {
-      console.error("Game start failed:", error);
-      throw error;
+    } catch (error: any) {
+      console.error("[game-store] startGame client-side error:", error.message);
+      // throw error; // Re-throwing might be too aggressive depending on UI handling
+      return false; // Indicate failure
     }
   },
 
@@ -537,69 +645,73 @@ export const useGameStore = create<GameStoreState>((set, get) => ({
     }
   },
 
-  // In useGameStore:
-  syncWithUserRoomStore: (roomId: string) => {
-    // Get data from userRoomStore
-    const { currentRoom, currentTurn, currentRound, setCurrentRoom } =
-      useUserRoomStore.getState();
-    // Get the latest room data
-    const supabase = createClient();
-    supabase
-      .from("rooms")
-      .select("*")
-      .eq("id", roomId)
-      .single()
-      .then(({ data: latestRoom }) => {
-        // Update the userRoomStore with the latest room data
-        if (setCurrentRoom && latestRoom) {
-          setCurrentRoom(latestRoom);
-        }
+  syncWithUserRoomStore: (updatedRoom: Room | null, updatedPlayers: Player[]) => {
+    console.log("[game-store] syncWithUserRoomStore called with room:", updatedRoom?.id, "and", updatedPlayers?.length, "players.");
+    set((state) => {
+      const currentGameState = state.currentGame;
 
-        // Update gameStore with the latest data
-        set((state) => {
-          if (!state.currentGame) return state;
-          return {
-            currentGame: {
-              ...state.currentGame,
-              room: latestRoom || state.currentGame.room,
-            },
-            currentTurn: currentTurn || state.currentTurn,
-          };
-        });
-      });
-
-    // Update gameStore with the latest data
-    if (currentRoom) {
-      set((state) => {
-        // Only update if we have a currentGame
-        if (!state.currentGame) return state;
-
+      if (!updatedRoom) {
+        console.log("[game-store] Room is null, resetting game state.");
+        // Consider unsubscribing from all game-specific subscriptions here
+        // This would require access to the unsubscribe functions returned by subscribeToX methods
+        // For now, just resetting state. Proper unsubscription needs more refactoring.
         return {
-          currentGame: {
-            ...state.currentGame,
-            room: currentRoom,
-          },
-          currentTurn: currentTurn || state.currentTurn,
+          ...state,
+          currentGame: null,
+          currentScenario: null,
+          currentTurn: null,
+          answers: [],
+          votes: [],
         };
-      });
-    }
+      }
 
-    // If we have a round ID but no currentTurn, fetch it
-    if (currentRound?.id && !currentTurn) {
-      get()
-        .fetchTurnById(currentRound.id)
-        .then((turn) => {
-          if (turn) {
-            set({ currentTurn: turn });
+      if (updatedRoom.game_status === "completed" && currentGameState?.room.game_status !== "completed") {
+        console.log("[game-store] Room status is completed. Finalizing game state.");
+        // Similar to above, consider unsubscribing from active game subscriptions.
+        return {
+          ...state,
+          currentGame: {
+            ...currentGameState,
+            room: updatedRoom,
+            players: updatedPlayers,
+            rounds: currentGameState?.rounds || [], // Keep existing rounds data if any
+            turns: currentGameState?.turns || [],   // Keep existing turns data if any
+          },
+          // Potentially keep currentTurn, answers, votes for a final results display
+          // currentTurn: null, // Or keep for results
+          // answers: [],
+          // votes: [],
+        };
+      }
+      
+      // If there's no current game state, but we receive a valid room, initialize.
+      // This can happen if game-store initializes after user-room-store has a room.
+      if (!currentGameState && updatedRoom) {
+        console.log("[game-store] Initializing currentGame with room from user-room-store:", updatedRoom.id);
+        return {
+          ...state,
+          currentGame: {
+            room: updatedRoom,
+            players: updatedPlayers,
+            rounds: [], // Rounds will be populated by subscribeToGame
+            turns: [],  // Turns will be populated by subscribeToGame (or its turn subscription part)
+          },
+        };
+      }
 
-            // Also update turn in userRoomStore
-            const { setCurrentTurn } = useUserRoomStore.getState();
-            if (setCurrentTurn) {
-              setCurrentTurn(turn);
-            }
-          }
-        });
-    }
+      // Default update for an ongoing game
+      if (currentGameState) {
+        return {
+          ...state,
+          currentGame: {
+            ...currentGameState,
+            room: updatedRoom,
+            players: updatedPlayers,
+          },
+        };
+      }
+      return state; // No change if no relevant conditions met
+    });
   },
 
   generateScenarios: async (turnId) => {
