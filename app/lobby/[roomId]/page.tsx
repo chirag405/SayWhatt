@@ -100,7 +100,7 @@ export default function LobbyScreen() {
       // Don't stop when navigating to game page
       if (!window.location.pathname.includes("/game/")) {
         console.log("Leaving lobby, stopping music");
-        stopSound(SOUND_PATHS.lobby);
+        stopSound(SOUND_PATHS.lobby, false);
       }
     };
   }, []);

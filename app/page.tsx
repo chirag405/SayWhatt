@@ -91,6 +91,7 @@ export default function HomeScreen() {
 
   useEffect(() => {
     if (currentRoom) {
+      stopAllSounds(false); // Add this line
       router.push(`/lobby/${currentRoom.id}`);
     }
   }, [currentRoom, router]);
